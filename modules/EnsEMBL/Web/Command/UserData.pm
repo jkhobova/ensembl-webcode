@@ -23,6 +23,8 @@ use strict;
 use HTML::Entities qw(encode_entities);
 
 use EnsEMBL::Web::File::User;
+use EnsEMBL::Web::Constants;
+use EnsEMBL::Web::Exceptions;
 
 use base qw(EnsEMBL::Web::Command);
 
@@ -30,6 +32,24 @@ sub ajax_redirect {
   ## Provide default value for redirectType and modalTab
   my ($self, $url, $param, $anchor, $redirect_type, $modal_tab) = @_;
   $self->SUPER::ajax_redirect($url, $param, $anchor, $redirect_type || 'modal', $modal_tab || 'modal_user_data');
+}
+
+sub add_message {
+### Add a message to the session upon data error
+  my ($self, $key) = @_;
+  my %data_error = EnsEMBL::Web::Constants::USERDATA_MESSAGES;
+  my $error = $data_error{$key};
+  
+  unless ($error) {
+    throw exception('UserData', "Error message for $key not defined. Please check EnsEMBL::Web::Constants::USERDATA_MESSAGES");
+  } 
+
+  $self->add_data(
+      type     => 'message',
+      code     => 'userdata_'.$key,
+      message  => $error->{'message'},
+      function => '_'.$error->{'type'},
+  );
 }
 
 sub upload {
@@ -44,7 +64,13 @@ sub upload {
   my $name      = $hub->param('name');
   my $f_param   = $hub->param('format');
   my ($error, $format, $full_ext, %args);
-  
+ 
+  $error = $hub->input->cgi_error;
+
+  if ($error =~ /413/) {
+    $self->add_message('file_size');      
+  }
+ 
   ## Need the filename (for handling zipped files)
   unless ($name) {
     if ($method eq 'text') {
@@ -84,11 +110,7 @@ sub upload {
               'absolute'        => 1,
             );
 
-  if ($method eq 'url') {
-    $args{'file'}          = $hub->param($method);
-    $args{'upload'}        = 'url';
-  } 
-  elsif ($method eq 'text') {
+  if ($method eq 'text') {
     ## Get content straight from CGI, since there's no input file
     my $text = $hub->param('text');
     if ($type eq 'coords') {
@@ -154,6 +176,9 @@ sub upload {
   }
   
   return $params;
+}
+
+sub attach_data {
 }
 
 1;
