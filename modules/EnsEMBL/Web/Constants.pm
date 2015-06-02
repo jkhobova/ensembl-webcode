@@ -48,6 +48,15 @@ sub ICON_MAPPINGS {
   };
 }
 
+sub FORMAT_EXTENSIONS {
+### Maps file extensions to formats, where they are not identical
+  return {
+    'bb'  => 'bigbed',
+    'bgr' => 'bed',
+    'bw'  => 'bigwig',
+  }
+}
+
 sub PARSER_FORMATS {
 ### Maps file formats to correct module classes
   return {
