@@ -51,7 +51,6 @@ sub content {
                                 { 
                                   'skip_validation' => 1, 
                                   'class' => 'check',   
-                                  'no_button' => 1
                                 },
                               ); 
   my $fieldset = $form->add_fieldset({'no_required_notes' => 1});
@@ -127,14 +126,12 @@ sub content {
       'label'       => 'Provide URL',
   });
 
+  ## Add hidden dropdown that will only appear if we can't guess
+  ## file format from the file extension 
   $self->add_hidden_format_dropdown($form);
 
-  $fieldset->add_button({
-      'name'        => 'submit_button',
-      'value'       => 'Next',
-  });
-
-  return sprintf '<input type="hidden" class="subpanel_type" value="UserData" /><h2>Add a custom track</h2>%s', $form->render;
+  #return sprintf '<input type="hidden" class="subpanel_type" value="UserData" /><h2>Add a custom track</h2>%s', $form->render;
+  return sprintf '<h2>Add a custom track</h2>%s', $form->render;
 }
 
 1;
