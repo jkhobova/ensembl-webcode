@@ -54,6 +54,7 @@ sub add_hidden_format_dropdown {
       'name'        => 'format',
       'label'       => 'Data format',
       'values'      => $values,
+      'value'       => 'BED',
       'field_class' => 'hidden',
   });
 }
