@@ -24,39 +24,22 @@ no warnings 'uninitialized';
 
 use HTML::Entities qw(encode_entities);
 
-use EnsEMBL::Web::File::User;
-use EnsEMBL::Web::Constants;
-
 use base qw(EnsEMBL::Web::Command::UserData);
 
 sub process {
   my $self = shift;
   my $hub  = $self->hub;
-  
-  my ($method)   = grep $hub->param($_), qw(file url text);
-  my $url_params = { 'action' => 'SelectFile', __clear => 1 };
 
-  ## Check format
-  my $format = $hub->param('format');
-  unless ($format) {
-    ## Guess based on extension
-    my $lookup  = EnsEMBL::Web::Constants::FORMAT_EXTENSIONS;
-    my $file    = EnsEMBL::Web::File::User->new('hub' => $hub, 'file' => $hub->param('url'));
-    $format     = $lookup->{$file->write_ext} || $file->write_ext;
-  }
+  my $format    = $hub->param('format');  
+  my ($method)  = grep $hub->param($_), qw(file url text);
+  my $url_params;
 
-  if ($format) {
-    if ($method eq 'url') {
-      $url_params = $self->attach_data($hub->param('url'), $format);
-    }
-    elsif ($method) { ## Upload data
-      $url_params = $self->upload($method, $format);
-    }
+  if ($method eq 'url') {
+    $url_params = $self->attach_data($hub->param('url'), $format);
   }
-  else {
-    ## Can't work out from extension - feed back to user appropriately
+  elsif ($method) { ## Upload data
+    $url_params = $self->upload($method, $format);
   }
-
 
   return $self->ajax_redirect($self->hub->url($url_params));
 }
