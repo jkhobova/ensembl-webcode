@@ -32,6 +32,32 @@ sub get_assemblies {
   return \@assemblies;
 }
 
+sub add_hidden_format_dropdown {
+  my ($self, $form) = @_;
+  my $sd              = $self->hub->species_defs;
+
+  my $format_info = $sd->multi_val('DATA_FORMAT_INFO');
+  my @formats  = @{$sd->multi_val('UPLOAD_FILE_FORMATS')||[]};
+  push @formats, 'datahub';
+  my $lookup = {};
+
+  foreach (@formats) {
+    $lookup->{$_} = $format_info->{$_}{'label'} if $format_info->{$_};
+  }
+  my @order = sort { lc($lookup->{$a}) cmp lc($lookup->{$b}) } keys %$lookup;
+
+  my $values = [{'caption' => '-- Choose --', 'value' => ''},
+                map {'value' => uc($_), 'caption' => $lookup->{$_}}, @order 
+              ];
+  $form->add_field({
+      'type'        => 'dropdown',
+      'name'        => 'format',
+      'label'       => 'Data format',
+      'values'      => $values,
+      'field_class' => 'hidden',
+  });
+}
+
 sub add_file_format_dropdown {
   my ($self, $form, $limit, $js_enabled) = @_;
 
