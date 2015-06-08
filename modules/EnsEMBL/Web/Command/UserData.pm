@@ -23,8 +23,7 @@ use strict;
 use HTML::Entities qw(encode_entities);
 
 use EnsEMBL::Web::File::User;
-use EnsEMBL::Web::Constants;
-use EnsEMBL::Web::Exceptions;
+use EnsEMBL::Web::Utils::Feedback qw(add_userdata_message);
 
 use base qw(EnsEMBL::Web::Command);
 
@@ -34,24 +33,6 @@ sub ajax_redirect {
   $self->SUPER::ajax_redirect($url, $param, $anchor, $redirect_type || 'modal', $modal_tab || 'modal_user_data');
 }
 
-sub add_message {
-### Add a message to the session upon data error
-  my ($self, $key) = @_;
-  my %data_error = EnsEMBL::Web::Constants::USERDATA_MESSAGES;
-  my $error = $data_error{$key};
-  
-  unless ($error) {
-    throw exception('UserData', "Error message for $key not defined. Please check EnsEMBL::Web::Constants::USERDATA_MESSAGES");
-  } 
-
-  $self->add_data(
-      type     => 'message',
-      code     => 'userdata_'.$key,
-      message  => $error->{'message'},
-      function => '_'.$error->{'type'},
-  );
-}
-
 sub upload {
 ### Separate out the upload, to make code reuse easier
 ### TODO refactor this method as a wrapper around E::W::File::User::upload
@@ -59,30 +40,19 @@ sub upload {
   my ($self, $method, $type) = @_;
   my $hub       = $self->hub;
   my $params    = {};
-  my @orig_path = split '/', $hub->param($method);
-  my $filename  = $orig_path[-1];
-  my $name      = $hub->param('name');
-  my $f_param   = $hub->param('format');
-  my ($error, $format, $full_ext, %args);
- 
+
   $error = $hub->input->cgi_error;
 
   if ($error =~ /413/) {
-    $self->add_message('file_size');      
+    add_userdata_message($hub->session, 'file_size');      
   }
  
-  ## Need the filename (for handling zipped files)
-  unless ($name) {
-    if ($method eq 'text') {
-      $name = 'Data';
-    } else {
-      my @orig_path = split('/', $hub->param($method));
-      $args{'filename'} = $orig_path[-1];
-      $name = $args{'filename'};
-    }
-  }
-  
-  $params->{'name'} = $name;
+  my $file = EnsEMBL::Web::File::User->new('hub' => $hub);
+
+
+  return {
+          'name' => $file->write_name,
+          }; 
 
   ## Some uploads shouldn't be viewable as tracks, e.g. assembly converter input
   my $no_attach = $type eq 'no_attach' ? 1 : 0;
@@ -179,6 +149,12 @@ sub upload {
 }
 
 sub attach_data {
+  my ($self, $url, $format) = @_;
+  my $params;
+
+  my $file = EnsEMBL::Web::File::User->new('hub' => $self->hub, 'file' => $url);
+
+  return $params;
 }
 
 1;
