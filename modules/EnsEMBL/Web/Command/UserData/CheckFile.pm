@@ -36,9 +36,11 @@ sub process {
 
   if ($method eq 'url') {
     $url_params = $self->attach_data($hub->param('url'), $format);
+    $url_params->{'action'} = 'RemoteFeedback';
   }
   elsif ($method) { ## Upload data
     $url_params = $self->upload($method, $format);
+    $url_params->{'action'} = 'UploadFeedback';
   }
 
   return $self->ajax_redirect($self->hub->url($url_params));
