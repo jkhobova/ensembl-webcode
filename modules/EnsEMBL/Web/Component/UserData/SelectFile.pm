@@ -22,6 +22,8 @@ use strict;
 use warnings;
 no warnings "uninitialized";
 
+use EnsEMBL::Web::Utils::Feedback qw(add_userdata_message);
+
 use base qw(EnsEMBL::Web::Component::UserData);
 
 sub _init {
@@ -42,22 +44,24 @@ sub content {
   my $sitename        = $sd->ENSEMBL_SITETYPE;
   my $current_species = $hub->data_species;
   my $max_upload_size = abs($sd->CGI_POST_MAX / 1048576).'MB'; # Should default to 5.0MB :)
-  my %urls            = ( 
-                          'upload' => $hub->url({'type' => 'UserData', 'action' => 'UploadFile'}), 
-                          'remote' => $hub->url({'type' => 'UserData', 'action' => 'AttachRemote'}), 
-                          'datahub' => $hub->url({'type' => 'UserData', 'action' => 'AttachRemote'}), 
-                        );
-  my $form            = $self->modal_form('select', $urls{'upload'}, {'skip_validation' => 1, 'class' => 'check', 'no_button' => 1}); # default JS validation is skipped as this form goes through a customised validation
-  my $fieldset        = $form->add_fieldset({'no_required_notes' => 1});
-
-  $fieldset->add_hidden({'name' => $_, 'value' => $urls{$_}}) for keys %urls;
+  
+  ## default JS validation is skipped as this form goes through a customised validation
+  my $form = $self->modal_form('select', 
+                                $hub->url({'type' => 'UserData', 'action' => 'CheckFile'}), 
+                                { 
+                                  'skip_validation' => 1, 
+                                  'class' => 'check',   
+                                  'no_button' => 1
+                                },
+                              ); 
+  my $fieldset = $form->add_fieldset({'no_required_notes' => 1});
 
   $fieldset->add_field({'type' => 'String', 'name' => 'name', 'label' => 'Name for this data (optional)'});
 
-  # Create a data structure for species, with display labels and their current assemblies
+  ## Create a data structure for species, with display labels and their current assemblies
   my @species = sort {$a->{'caption'} cmp $b->{'caption'}} map({'value' => $_, 'caption' => $sd->species_label($_, 1), 'assembly' => $sd->get_config($_, 'ASSEMBLY_VERSION')}, $sd->valid_species);
 
-  # Create HTML for showing/hiding assembly names to work with JS
+  ## Create HTML for showing/hiding assembly names to work with JS
   my $assembly_names = join '', map { sprintf '<span class="_stt_%s%s">%s</span>', $_->{'value'}, $_->{'value'} eq $current_species ? '' : ' hidden', delete $_->{'assembly'} } @species;
 
   $fieldset->add_field({
@@ -122,6 +126,8 @@ sub content {
       'name'        => 'url',
       'label'       => 'Provide URL',
   });
+
+  $self->add_hidden_format_dropdown($form);
 
   $fieldset->add_button({
       'name'        => 'submit_button',
