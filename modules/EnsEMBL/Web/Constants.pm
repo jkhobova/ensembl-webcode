@@ -607,6 +607,11 @@ sub USERDATA_MESSAGES {
       'title'   => 'File system error',
       'message' => 'We were unable to access your data file. If you continue to get this message, there may be an network issue, or your file may be too large for us to upload.',
     },
+    format_unknown => {
+      'type'    => 'error', 
+      'title'   => 'Unknown format',
+      'message' => 'Could not auto-detect file format. Please select from the dropdown list.',
+    },
     file_format => {
       'type'    => 'error', 
       'title'   => 'Input problem',
