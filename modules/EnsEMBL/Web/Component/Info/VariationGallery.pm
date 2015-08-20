@@ -235,7 +235,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_trans_table',
-                                  'caption' => '',
+                                  'caption' => 'Table of variants within the same transcript as this one',
                                 },
           'Transcript Comparison' => {
                                   'url'     => $hub->url({'type'    => 'Gene',
@@ -251,7 +251,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_exons',
-                                  'caption' => '',
+                                  'caption' => 'Variations within each exon sequence',
                                 },
           'Protein Summary' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
