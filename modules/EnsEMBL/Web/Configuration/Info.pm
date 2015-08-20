@@ -97,7 +97,7 @@ sub populate_tree {
     [qw(loc_gallery EnsEMBL::Web::Component::Info::LocationGallery)],
     { 'availability' => 1 }
   );
-  $self->create_subnode('CheckGallery', '', [],
+  $self->create_node('CheckGallery', '', [],
     { command => 'EnsEMBL::Web::Command::Info::CheckGallery', no_menu_entry => 1 }
   );
 
