@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +38,9 @@ sub content {
   $self->renderer_button;
   $self->advanced_button('featuresbycellline');
 
-  return '';
+  my $id = $self->id;
+  return qq(<input type="hidden" class="panel_type" value="RegButtons" name="panel_type_$id" />);
+
 }
 
 sub button_style {

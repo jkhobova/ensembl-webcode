@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,17 +84,16 @@ sub handler {
     ## Not temporary static files are pluggable:
     unless ($file =~ s/^$SiteDefs::ENSEMBL_TMP_URL_IMG/$SiteDefs::ENSEMBL_TMP_DIR_IMG/g + $file =~ s/^$SiteDefs::ENSEMBL_TMP_URL/$SiteDefs::ENSEMBL_TMP_DIR/g) {
       ## walk through plugins tree and search for the file in all htdocs dirs
-      foreach my $dir (@HTDOCS_TRANS_DIRS) {
-        my $f = sprintf $dir, $file;
-        if (-d $f or -r $f) {
-          $file = $f;
-          last;
-        }
-      }
+      $file = htdoc_dir($file, $r);
     }
+
+    return DECLINED if $file eq $uri; # absolute file path provided via url
 
     if (-e $file) {
       ## Send 2MB+ files without caching them
+      $r->headers_out->set('Cache-Control'  => 'max-age=' . 60*60*24*30);
+      $r->headers_out->set('Expires'        => HTTP::Date::time2str(time + 60*60*24*30));
+      $r->content_type(mime_type($uri));
       return $r->sendfile($file) if -s $file > 2*1024*1024;
       
       {
@@ -110,9 +109,6 @@ sub handler {
       $r->headers_out->set('Last-Modified'  => HTTP::Date::time2str($file_info[9]));
       $r->headers_out->set('Accept-Ranges'  => 'bytes');
       $r->headers_out->set('Content-Length' => length($content));
-      $r->headers_out->set('Cache-Control'  => 'max-age=' . 60*60*24*30);
-      $r->headers_out->set('Expires'        => HTTP::Date::time2str(time + 60*60*24*30));
-      $r->content_type(mime_type($uri));
       
       $r->print($content);
       return OK;
@@ -128,5 +124,20 @@ sub mime_type {
   my $mimeobj = $MIME->mimeTypeOf($file);
   return $mimeobj ? $mimeobj->type : 'text/plain';
 }
+
+#overwritten in mobile plugin
+sub htdoc_dir { 
+  my ($file, $r) = @_;
+  
+  foreach my $dir (@HTDOCS_TRANS_DIRS) {
+    my $f = sprintf $dir, $file;
+    if (-d $f or -r $f) {
+      $file = $f;
+      last;
+    }
+  }
+  return $file;
+}
+
 
 1;

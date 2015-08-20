@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ sub colour_key {
 sub features {
   my $self = shift;
   
-  if (!$self->{'features'}) {
+  if (!@{$self->{'features'}||[]}) {
     my $all_features = $self->{'container'}->get_all_AssemblyExceptionFeatures;
     
     return $self->{'features'} = $all_features if $self->{'display'} eq 'normal';

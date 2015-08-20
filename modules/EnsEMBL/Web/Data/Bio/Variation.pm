@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ sub convert_to_drawing_parameters {
   ### for use by drawing code and HTML components
   
   my $self     = shift;
-  my $data     = $self->data_objects;
+  my @data     = grep {$_->type ne 'SupportingStructuralVariation'} @{$self->data_objects || []}; # Skip the Supporting Structural Variation phenotype features
   my $hub      = $self->hub;
   my @phen_ids = $hub->param('ph');
   my $ga       = $hub->database('core')->get_adaptor('Gene');
@@ -47,16 +47,24 @@ sub convert_to_drawing_parameters {
 
   # Threshold to display the variations on the karyotype view. Use BioMart instead.
   my $max_features    = 1000;
-  my $count_features  = scalar(@$data);
+  my $count_features  = scalar @data;
 
   if ($count_features > $max_features) {
-    throw exception('TooManyFeatures', qq(There are <b>$count_features</b> genomic locations associated with this phenotype. Please, use <a href="/biomart/martview/">BioMart</a> to retrieve a table of all the variants associated with this phenotype instead as there are too many to display on a karyotype.));
+
+    my $biomart_link = ($hub->species_defs->ENSEMBL_MART_ENABLED && $hub->species =~ /homo_sapiens/i) ? '?VIRTUALSCHEMANAME=default'.
+                          '&ATTRIBUTES=hsapiens_snp.default.snp.refsnp_id|hsapiens_snp.default.snp.chr_name|'.
+                          'hsapiens_snp.default.snp.chrom_start|hsapiens_snp.default.snp.associated_gene'.
+                          '&FILTERS=hsapiens_snp.default.filters.phenotype_description.&quot;'.$hub->param('name').'&quot;'.
+                          '&VISIBLEPANEL=resultspanel' : '/';
+
+
+    throw exception('TooManyFeatures', qq(There are <b>$count_features</b> genomic locations associated with this phenotype. Please, use <a href="/biomart/martview$biomart_link">BioMart</a> to retrieve a table of all the variants associated with this phenotype instead as there are too many to display on a karyotype.));
   }
 
   # getting associated phenotypes and associated genes
-  foreach my $pf (@{$data || []}) {
+  foreach my $pf (@data) {
     my $object_id   = $pf->object_id;
-    my $source_name = $pf->source;
+    my $source_name = $pf->source_name;
        $source_name =~ s/_/ /g;
     my $study_xref  = ($pf->study) ? $pf->study->external_reference : undef;
     my $external_id = ($pf->external_id) ? $pf->external_id : undef;
@@ -88,7 +96,7 @@ sub convert_to_drawing_parameters {
   
   my %seen;
   
-  foreach my $pf (@$data) {
+  foreach my $pf (@data) {
     if (ref($pf) =~ /UnmappedObject/) {
       push @results, $self->unmapped_object($pf);
       next;
@@ -165,7 +173,7 @@ sub convert_to_drawing_parameters {
       strand  => $pf->strand,
       html_id => "${name}_$dbID", # The html id is used to match the feature on the karyotype (html_id in area tag) with the row in the feature table (table_class in the table row)
       label   => $name,
-      href    => $hub->url(\%url_params),       
+      href    => \%url_params,
       p_value => $p_value_logs{$name},
       extra   => {
         feat_type   => $object_type,
@@ -195,8 +203,12 @@ sub _pf_external_reference_link {
   foreach my $xref (sort keys(%$xrefs)) {
     my $link;
     if($xref =~ /pubmed/) {
-      $link = qq{http://www.ncbi.nlm.nih.gov/$xref};
+      my $xref_id = $xref;
+         $xref_id =~ s/pubmed\///;
+      $link = $self->hub->species_defs->ENSEMBL_EXTERNAL_URLS->{'EPMC_MED'};
+      $link =~ s/###ID###/$xref_id/;
       $xref =~ s/\//:/g;
+      $xref =~ s/pubmed/PMID/;
       $html .= qq{<a rel="external" href="$link">$xref</a>; };
     }
     elsif($xref =~ /^MIM\:/) {
@@ -233,27 +245,19 @@ sub _pf_source_link {
   }
   
   my $source_uc = uc $source;
-     $source_uc = 'OPEN_ACCESS_GWAS_DATABASE' if $source_uc =~ /OPEN/;
      $source_uc =~ s/\s/_/g;
   my $url       = $self->hub->species_defs->ENSEMBL_EXTERNAL_URLS->{$source_uc};
   my $label     = $source;
   my $name;
-  if ($url =~ /gwastudies/) {
-    $ext_ref_id =~ s/pubmed\///; 
-    $name = $ext_ref_id;
+  if ($url =~/ebi\.ac\.uk\/gwas/) {
+    $name = $obj_name;
   } 
   elsif ($url =~ /clinvar/) {
     $ext_id =~ /^(.+)\.\d+$/;
     $name = ($1) ? $1 : $ext_id;
   } 
   elsif ($url =~ /omim/) {
-  #  if ($code) {
-     $name = "search?search=".($ext_id || $obj_name);
-  #  }
-  #  else {
-  #    $ext_ref_id =~ s/MIM\://; 
-  #    $name = $ext_ref_id;
-  #  }     
+    $name = "search?search=".($ext_id || $obj_name);
   } else {
     $name = $ext_id || $obj_name;
   }

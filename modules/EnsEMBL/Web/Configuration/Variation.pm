@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ sub populate_tree {
   my $self    = shift;
   my $somatic = $self->object ? $self->object->Obj->has_somatic_source : undef;
 
-  $self->create_node('Explore', 'Explore this variation',
+  $self->create_node('Explore', 'Explore this variant',
     [qw(
       explore EnsEMBL::Web::Component::Variation::Explore
     )],
@@ -53,9 +53,9 @@ sub populate_tree {
     { 'availability' => 'variation', 'concise' => 'Context' }
   );
   
-  $context_menu->append($self->create_node('Mappings', 'Genes and regulation ([[counts::transcripts]])',
+  $context_menu->append($self->create_node('Mappings', 'Genes and regulation',
     [qw( mappings EnsEMBL::Web::Component::Variation::Mappings )],
-    { 'availability' => 'variation has_transcripts', 'concise' => 'Genes and regulation' }
+    { 'availability' => 'variation has_features', 'concise' => 'Genes and regulation' }
   ));
   $context_menu->append($self->create_node('Sequence', 'Flanking sequence',
     [qw( flanking EnsEMBL::Web::Component::Variation::FlankingSequence )],
@@ -70,25 +70,25 @@ sub populate_tree {
     { 'availability' => 'variation has_populations not_somatic', 'concise' => 'Population genetics', 'no_menu_entry' => $somatic }
   );
   
-  $self->create_node('Populations', 'Sample information ([[counts::populations]])',
+  $self->create_node('Populations', 'Sample information',
     [qw( population EnsEMBL::Web::Component::Variation::PopulationGenotypes )],
     { 'availability' => 'variation has_populations is_somatic', 'concise' => 'Sample information', 'no_menu_entry' => !$somatic }
   );
   
-  $self->create_node('Individual', 'Individual genotypes ([[counts::individuals]])',
+  $self->create_node('Sample', 'Sample genotypes',
     [qw( 
-      search     EnsEMBL::Web::Component::Variation::IndividualGenotypesSearch
-      individual EnsEMBL::Web::Component::Variation::IndividualGenotypes 
+      search EnsEMBL::Web::Component::Variation::SampleGenotypesSearch
+      sample EnsEMBL::Web::Component::Variation::SampleGenotypes 
     )],
-    { 'availability' => 'variation has_individuals not_somatic', 'concise' => 'Individual genotypes', 'no_menu_entry' => $somatic }
+    { 'availability' => 'variation has_samples not_somatic', 'concise' => 'Sample genotypes', 'no_menu_entry' => $somatic }
   ); 
   
   $self->create_node('HighLD', 'Linkage disequilibrium',
     [qw( highld EnsEMBL::Web::Component::Variation::HighLD )],
-    { 'availability' => 'variation has_ldpops variation has_individuals not_somatic', 'concise' => 'Linkage disequilibrium', 'no_menu_entry' => $somatic }
+    { 'availability' => 'variation has_ldpops variation has_samples not_somatic', 'concise' => 'Linkage disequilibrium', 'no_menu_entry' => $somatic }
   );
     
-  $self->create_node('Phenotype', 'Phenotype Data ([[counts::ega]])',
+  $self->create_node('Phenotype', 'Phenotype Data',
     [qw( 
         phenotype EnsEMBL::Web::Component::Variation::Phenotype 
         genes     EnsEMBL::Web::Component::Variation::LocalGenes
@@ -96,14 +96,14 @@ sub populate_tree {
     { 'availability' => 'variation has_ega', 'concise' => 'Phenotype Data' }
   );
   
-  $self->create_node('Compara_Alignments', 'Phylogenetic Context ([[counts::alignments]])',
+  $self->create_node('Compara_Alignments', 'Phylogenetic Context',
     [qw(
       selector EnsEMBL::Web::Component::Compara_AlignSliceSelector
       alignment EnsEMBL::Web::Component::Variation::Compara_Alignments
     )],
     { 'availability' => 'variation database:compara has_alignments', 'concise' => 'Phylogenetic Context' }
   );
-  $self->create_node('Citations', 'Citations ([[counts::citation]])',
+  $self->create_node('Citations', 'Citations',
     [qw( alignment EnsEMBL::Web::Component::Variation::Publication  )],
     { 'availability' => 'variation has_citation','concise' => 'Citations'  } 
   );  

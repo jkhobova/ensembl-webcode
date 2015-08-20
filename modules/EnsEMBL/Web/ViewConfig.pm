@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -297,6 +297,18 @@ sub update_from_url {
 
   my @values = split /,/, $input->param($image_config);
   
+  ## Hack to use a more user-friendly URL for trackhub attachment
+  if ($input->param('trackhub') && $image_config eq 'contigviewbottom') {
+    push @values, 'url:'.$input->param('trackhub');
+    $input->param('format', 'TRACKHUB');
+    $input->delete('trackhub'); 
+  }
+
+  ## Backwards compatibility
+  if ($input->param('format') eq 'DATAHUB') {
+    $input->param('format', 'TRACKHUB');
+  }
+
   $hub->get_imageconfig($image_config)->update_from_url(@values) if @values;
   
   $session->store;
@@ -357,7 +369,8 @@ sub add_form_element {
     if ($element->{'value'} eq 'off') {
       $element->{'value'} = 'on';
     }
-    $element->{'selected'} = $self->get($element->{'name'}) eq 'off' ? 0 : 1;
+    my $value = $self->get($element->{'name'});
+    $element->{'selected'} = ( $value eq 'off' || $value eq 'no') ? 0 : 1;
   } elsif (!exists $element->{'value'}) {
     if ($element->{'multiple'}) {
       my @value = $self->get($element->{'name'});
@@ -504,15 +517,16 @@ sub build_imageconfig_form {
   foreach my $node (@{$image_config->tree->child_nodes}) {
     my $section = $node->id;
     
+    $section =~ s|-|_|g;
     next if $section eq 'track_order';
     
     my $data    = $node->data;
     my $caption = $data->{'caption'};
-    my $class   = $data->{'datahub_menu'} || $section eq 'user_data' ? 'move_to_top' : ''; # add a class to user data and data hubs to get javascript to move them to the top of the navigation
+    my $class   = $data->{'trackhub_menu'} || $section eq 'user_data' ? 'move_to_top' : ''; # add a class to user data and data hubs to get javascript to move them to the top of the navigation
     my $div     = $form->append_child('div', { class => "config $section $class" });
     
     $div->append_child('h2', { class => 'config_header', inner_HTML => $caption });
-    
+
     my $parent_menu = $tree->append($tree->create_node($section, {
       caption  => $caption,
       class    => $section,
@@ -534,7 +548,7 @@ sub build_imageconfig_form {
           
           $first = '';
           
-          next if scalar @child_nodes == 1 && !$data->{'datahub_menu'};
+          next if scalar @child_nodes == 1 && !$data->{'trackhub_menu'};
           
           my $url = $_->data->{'url'};
           my ($total, $on);
@@ -594,7 +608,7 @@ sub build_imageconfig_menus {
   if ($menu_type eq 'matrix_subtrack') {
     my $display = $node->get('display');
     
-    if (
+    if ($node->get_node($data->{'option_key'}) &&
       $node->get_node($data->{'option_key'})->get('display') eq 'on' &&                           # The cell option is turned on AND
       $display ne 'off' &&                                                                        # The track is not turned off AND
       !($display eq 'default' && $node->get_node($data->{'column_key'})->get('display') eq 'off') # The track renderer is not default while the column renderer is off
@@ -643,7 +657,6 @@ sub build_imageconfig_menus {
     my %valid       = @states;
     my $display     = $node->get('display') || 'off';
        $display     = $valid{'normal'} ? 'normal' : $states[2] unless $valid{$display};
-    my $desc        = $data->{'description'};
     my $controls    = $data->{'controls'};
     my $subset      = $data->{'subset'};
     my $name        = encode_entities($data->{'name'});
@@ -675,12 +688,19 @@ sub build_imageconfig_menus {
       
       $self->{'total_tracks'}{$menu_class}++;
     }
-    
-    if ($data->{'subtrack_list'}) {
-      $desc  = ($desc ? "<p>$desc</p>" : '') . '<p>Contains the following sub tracks:</p>'; 
-      $desc .= sprintf '<ul>%s</ul>', join '', map $_->[1], sort { $a->[0] cmp $b->[0] } map [ lc $_->[0], $_->[1] ? "<li><strong>$_->[0]</strong><p>$_->[1]</p></li>" : "<li>$_->[0]</li>" ], @{$data->{'subtrack_list'}};
+
+    my $desc      = '';
+    my $desc_url  = $data->{'desc_url'} ? $self->hub->url('Ajax', {'type' => 'fetch_html', 'url' => $data->{'desc_url'}}) : '';
+
+    if ($data->{'subtrack_list'}) { # it's a composite track
+      $desc .= '<h1>Track list</h1>';
+      $desc .= sprintf '<ul>%s</ul>', join '', map $_->[1], sort { $a->[0] cmp $b->[0] } map [ lc $_->[0], $_->[1] ? "<li><p><b>$_->[0]</b></p><p>$_->[1]</p></li>" : "<li>$_->[0]</li>" ], @{$data->{'subtrack_list'}};
+      $desc .= "<h1>Trackhub description: $data->{'description'}</h1>" if $data->{'description'} && $desc_url;
+      $desc .= qq(<div class="_dyna_load"><a class="hidden" href="$desc_url">No description found for this composite track.</a>Loading&#133;</div>) if $desc_url;
+    } else {
+      $desc .= $desc_url ? qq(<div class="_dyna_load"><a class="hidden" href="$desc_url">$data->{'description'}</a>Loading&#133;</div>) : $data->{'description'};
     }
-    
+
     if ($desc) {
       $desc = qq{<div class="desc">$desc</div>};
       $help = qq{<div class="sprite info_icon menu_help _ht" title="Click for more information"></div>};

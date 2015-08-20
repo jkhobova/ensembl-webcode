@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -164,6 +164,12 @@ sub _pf_link {
     if ($type eq 'Gene') {
       $display_label = $self->object->get_gene_display_label($f->{'label'});
       $display_label = " ($display_label)" if $display_label;
+
+      # LRG
+      if ($f->{'label'} =~ /(LRG)_\d+$/) {
+        $type = $1;
+        $id_param = lc($type);
+      }
     }
 
     my $params = {

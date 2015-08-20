@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,13 @@ limitations under the License.
 #     having a Mapper per pair of coordinate systems.
 #   Transcript Mapper uses slice-relative coordinates...
 package Bio::EnsEMBL::ExternalData::DAS::GenomicPeptideMapper;
+
+############################################################################
+#
+# DEPRECATED MODULE - DAS SUPPORT WILL BE REMOVED FROM ENSEMBL IN RELEASE 83
+#
+#############################################################################
+
 
 use strict;
 use warnings;

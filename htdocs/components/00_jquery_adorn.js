@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,16 +47,18 @@
       $.each(raw_input,function(a,b) { input.push([a,b]); });
       d = $.Deferred().resolve(input);
       var output = [];
-      for(var i=0;i<input.length;i+=group) {
-        d = beat(d.then(function(j) {
-          for(j=0;j<group && i+j<input.length;j++) {
-            var c = fn(input[i+j][0],input[i+j][1]);
-            if(c !== undefined) {
-              output.push(c);
+      for(var ii=0;ii<input.length;ii+=group) {
+        (function(i) {
+          d = beat(d.then(function(j) {
+            for(j=0;j<group && i+j<input.length;j++) {
+              var c = fn(input[i+j][0],input[i+j][1]);
+              if(c !== undefined) {
+                output.push(c);
+              }
             }
-          }
-          return $.Deferred().resolve(output);
-        }));
+            return $.Deferred().resolve(output);
+          }));
+        })(ii);
       }
       return d;
     });
@@ -183,7 +185,7 @@
   }
 
   function add_legend($outer,legend,loading) {
-    var $key = $outer.parents('.js_panel').find('.adornment-key');
+    var $key = $outer.parents('.js_panel').find('._adornment_key');
     // Add new legend to data
     var data = $key.data('data');
     if(!data) { data = {}; }
@@ -220,15 +222,19 @@
         row += '<li><span class="ad-loading">loading</span></li>';
       } else {
         sorted_each(cv,function(en,ev) {
-          var style = '';
-          if(!ev) { return; }
-          if(ev['default']) {
-            style += "background-color: " + ev['default'] + ";";
+          row += '<li><span class="adorn-key-entry" style="';
+          row += ev['default'] ? 'background-color:' + ev['default'] + ';' : '';
+          row += ev.label ? 'color:' + ev.label + ';' : '';
+          row += ev.extra_css ? ev.extra_css : '';
+          row += '">';
+          if (ev.title) {
+            row += '<span title="' + ev.title + '"';
+            row += ev.label ? ' style="border-color:' + ev.label + '"' : '';
+            row += '>' + ev.text + '</span>';
+          } else {
+            row += ev.text;
           }
-          if(ev.label) { style += "color: " + ev.label + ";"; }
-          if(ev.extra_css) { style += ev.extra_css; }
-          row += '<li><span class="adorn-key-entry" style="'+style+'">' +
-            ev.text + '</span></li>';
+          row += '</span></li>';
         });
       }
       if(row) {
@@ -244,10 +250,9 @@
       });
     }
     var html = '';
-    if(key || messages) { html += '<h4>Key:</h4>'; }
     if(key) { html += '<dl>' + key +'</dl>'; }
     if(messages) { html += '<ul>' + messages + '</ul>'; }
-    $key.html(html);
+    $key.html(html).toggle(!!html).find('span[title]').helptip();
   }
 
   function _do_adorn(outer,fixups,data) {

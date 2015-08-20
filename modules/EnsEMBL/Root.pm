@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@ BEGIN {
 # Used to enable symbolic debugging support in dynamic_use.
   if($ENV{'PERLDB'}) {
     require Inline;
-    Inline->import(C => Config => DIRECTORY => "$SiteDefs::ENSEMBL_WEBROOT/cbuild");
+    Inline->import(C => Config => DIRECTORY => "$SiteDefs::ENSEMBL_WEBROOT");
     Inline->import(C => "void lvalues_nodebug(CV* cv) { CvNODEBUG_on(cv); }");
   }
 }

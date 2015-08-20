@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,9 +79,9 @@ sub handle_download {
   my ($self, $r) = @_;
   my $hub = $self->hub;
 
-  my $filename    = $hub->param('name');
-  my $path        = $hub->param('file_path');
+  my $filename    = $hub->param('filename');
   my $format      = $hub->param('format');
+  my $path        = $hub->param('file');
   my $compression = $hub->param('compression');
   
   ## Strip double dots to prevent downloading of files outside tmp directory
@@ -95,14 +95,14 @@ sub handle_download {
         'gz'    => 'application/x-gzip',
         'zip'   => 'application/zip',
   );
-  my $mime_type = $mime_types{$compression} || $mime_types{$format} || 'text/plain';
+  my $mime_type = $mime_types{$compression} || $format && $mime_types{$format} || 'text/plain';
 
-  my %params = (hub => $hub, file_path => $path);
-  my $tmpfile = EnsEMBL::Web::File::User->new(%params);
+  my %params = (hub => $hub, file => $path);
+  my $file = EnsEMBL::Web::File::User->new(%params);
   my $error;
 
-  if ($tmpfile->exists) {
-    my $result = $tmpfile->fetch;
+  if ($file->exists) {
+    my $result = $file->fetch;
     my $content = $result->{'content'};
     if ($content) {
 
@@ -121,6 +121,7 @@ sub handle_download {
   }
 
   if ($error) {
+    warn ">>> DOWNLOAD ERROR: @$error";
   }
 }
 

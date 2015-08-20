@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,11 +26,13 @@ use strict;
 use List::Util qw(reduce);
 
 use EnsEMBL::Web::Text::FeatureParser;
-use EnsEMBL::Web::TmpFile::Text;
-use EnsEMBL::Web::Tools::Misc;
+use EnsEMBL::Web::File::User;
+use EnsEMBL::Web::Utils::FormatText qw(add_links);
 use Bio::EnsEMBL::Variation::Utils::Constants;
 
 use base qw(EnsEMBL::Draw::GlyphSet::_alignment EnsEMBL::Draw::GlyphSet_wiggle_and_block);
+
+sub wiggle_subtitle { join(', ',@{$_[0]->{'subtitle'}||[]}); }
 
 sub feature_group { my ($self, $f) = @_; return $f->id; }
 sub feature_label { my ($self, $f) = @_; return $f->id; }
@@ -39,30 +41,36 @@ sub draw_features {
   my ($self, $wiggle) = @_; 
   my %data = $self->features;
   
-  return 0 unless keys %data;
-  
+  ## Value to drop into error message
+  return $self->my_config('format').' features' unless keys %data;
+ 
+  $self->{'subtitle'} = []; 
   if ($wiggle) {
+    my $first = 1;
     foreach my $key ($self->sort_features_by_priority(%data)) {
-      my ($features, $config)     = @{$data{$key}};
+      $self->draw_space_glyph() unless $first;
+      $first = 0;
+      my ($features, $config)     = @{$data{$key}||[]};
       my $graph_type              = ($config->{'useScore'} && $config->{'useScore'} == 4) || ($config->{'graphType'} && $config->{'graphType'} eq 'points') ? 'points' : 'bar';
       my ($min_score, $max_score) = split ':', $config->{'viewLimits'};
       
       $min_score = $config->{'min_score'} unless $min_score;
       $max_score = $config->{'max_score'} unless $max_score;
       
+      my $subtitle = $config->{'name'} || $config->{'description'};
+      push @{$self->{'subtitle'}},$subtitle;
       $self->draw_wiggle_plot($features, { 
         min_score    => $min_score,
         max_score    => $max_score, 
         score_colour => $config->{'color'},
         axis_colour  => 'black',
-        description  => $config->{'description'},
         graph_type   => $graph_type,
         use_feature_colours => (lc($config->{'itemRgb'}||'') eq 'on'),
       });
     }
   }
   
-  return 1;
+  return 0;
 }
 
 sub features {
@@ -83,32 +91,55 @@ sub features {
   if ($sub_type eq 'single_feature') {
     $parser->parse($self->my_config('data'), $self->my_config('format'));
   }
-  elsif ($sub_type eq 'url') {
-    my $response = EnsEMBL::Web::Tools::Misc::get_url_content($self->my_config('url'));
+  else {
+    my %args = ('hub' => $self->{'config'}->hub);
+
+    if ($sub_type eq 'url') {
+      $args{'file'} = $self->my_config('url');
+      $args{'input_drivers'} = ['URL']; 
+    }
+    else {
+      $args{'file'} = $self->my_config('file');
+      if ($args{'file'} !~ /\//) { ## TmpFile upload
+        $args{'prefix'} = 'user_upload';
+      }
+    }
+
+    my $file = EnsEMBL::Web::File::User->new(%args);
+
+    my $response = $file->read;
 
     if (my $data = $response->{'content'}) {
       $parser->parse($data, $self->my_config('format'));
     } else {
-      warn "!!! $response->{'error'}";
+      return $self->errorTrack(sprintf 'Could not read file %s', $self->my_config('caption'));
+      warn "!!! ERROR READING FILE: ".$response->{'error'}[0];
     }
-  } else {
-    my $file = EnsEMBL::Web::TmpFile::Text->new(filename => $self->my_config('file'));
+  } 
 
-    return $self->errorTrack(sprintf 'The file %s could not be found', $self->my_config('caption')) if !$file->exists;
-
-    my $data = $file->retrieve;
-
-    return [] unless $data;
-
-    $parser->parse($data, $self->my_config('format'));
-  }
+  my $key = $self->{'hover_label_class'}; 
+  my $hover_label = $self->{'config'}->{'hover_labels'}{$key};
 
   ## Now we translate all the features to their rightful co-ordinates
   while (my ($key, $T) = each (%{$parser->{'tracks'}})) {
     $_->map($container) for @{$T->{'features'}};
+
+    my $description = $T->{'config'}{'description'};
+    if ($description) {
+      $description = add_links($description);
+      $hover_label->{'extra_desc'} = $description;
+    }
  
     ## Set track depth a bit higher if there are lots of user features
     $T->{'config'}{'dep'} = scalar @{$T->{'features'}} > 20 ? 20 : scalar @{$T->{'features'}};
+
+    ## Quick'n'dirty BED hack
+    foreach (@{$T->{'features'}}) {
+      if ($_->can('external_data') && $_->external_data && $_->external_data->{'BlockCount'}) {
+        $self->{'my_config'}->set('has_blocks', 1);
+        last;
+      }
+    }
 
     ### ensure the display of the VEP features using colours corresponding to their consequence
     if ($self->my_config('format') eq 'VEP_OUTPUT') {
@@ -161,7 +192,6 @@ sub features {
 
     $results{$key} = [$features, $T->{'config'}];
   }
-
   return %results;
 }
 

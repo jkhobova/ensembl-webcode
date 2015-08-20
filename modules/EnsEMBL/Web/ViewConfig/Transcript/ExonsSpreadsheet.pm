@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,8 +33,9 @@ sub init {
     fullseq         => 'off',
     exons_only      => 'off',
     line_numbering  => 'off',
-    snp_display     => 'off',
+    snp_display     => 'exon',
   });
+
 
   $self->title = 'Exons';
   $self->SUPER::init;
@@ -52,9 +53,10 @@ sub form_fields {
   my $fields = {};
 
   $markup_options->{'flanking'} = {
-    type  => 'NonNegInt',
-    label => 'Flanking sequence at either end of transcript',
-    name  => 'flanking'
+    type    => 'NonNegInt',
+    default => '0',
+    label   => 'Flanking sequence at either end of transcript',
+    name    => 'flanking'
   };
   
   $markup_options->{'sscon'} = {

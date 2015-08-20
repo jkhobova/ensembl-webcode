@@ -1,5 +1,5 @@
 #!/usr/local/bin/perl
-# Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,19 +35,19 @@ BEGIN {
   require EnsEMBL::Web::Hub;
 }
 
-my $time = Time::HiRes::time;
-my $hub = new EnsEMBL::Web::Hub;
-my $sd  = $hub->species_defs;
+my $time  = Time::HiRes::time;
+my $sd    = EnsEMBL::Web::Hub->new->species_defs;
+my $db    = $sd->session_db;
 
 my $dsn = sprintf(
   'DBI:mysql:database=%s;host=%s;port=%s',
-  $sd->multidb->{'DATABASE_SESSION'}{'NAME'} || $sd->ENSEMBL_USERDB_NAME,
-  $sd->multidb->{'DATABASE_SESSION'}{'HOST'} || $sd->ENSEMBL_USERDB_HOST,
-  $sd->multidb->{'DATABASE_SESSION'}{'PORT'} || $sd->ENSEMBL_USERDB_PORT,
+  $db->{'NAME'},
+  $db->{'HOST'},
+  $db->{'PORT'},
 );
 
 my $dbh = DBI->connect(
-  $dsn, $sd->ENSEMBL_USERDB_USER, $sd->ENSEMBL_USERDB_PASS
+  $dsn, $db->{'USER'}, $db->{'PASS'}
 );
 
 $dbh->do('CREATE TABLE session_record_tmp LIKE session_record');

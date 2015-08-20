@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,7 +36,32 @@ sub content {
   my $validation   = $object->validation_status;
   my $failed       = $object->Obj->failed_description ? $self->failed() : ''; ## First warn if the SV has been failed
   my $sv_sets      = $object->get_variation_set_string;
+  my $hub          = $self->hub;
+  my $avail        = $object->availability;
 
+  my $transcript_url  = $hub->url({ action => "StructuralVariation", action => "Mappings",    sv => $object->name });
+  my $evidence_url    = $hub->url({ action => "StructuralVariation", action => "Evidence",    sv => $object->name });
+  my $phenotype_url   = $hub->url({ action => "StructuralVariation", action => "Phenotype",   sv => $object->name });  
+ 
+  my @str_array;
+  push @str_array, sprintf('overlaps <a href="%s">%s %s</a>', 
+                      $transcript_url, 
+                      $avail->{has_transcripts}, 
+                      $avail->{has_transcripts} eq "1" ? "transcript" : "transcripts"
+                  ) if($avail->{has_transcripts});
+                  
+  push @str_array, sprintf('is associated with <a href="%s">%s %s</a>', 
+                      $phenotype_url, 
+                      $avail->{has_phenotypes}, 
+                      $avail->{has_phenotypes} eq "1" ? "phenotype" : "phenotypes"
+                  ) if($avail->{has_phenotypes});
+
+  push @str_array, sprintf('is supported by <a href="%s">%s %s of evidence</a>',
+                      $evidence_url, 
+                      $avail->{has_supporting_structural_variation}, 
+                      $avail->{has_supporting_structural_variation} eq "1" ? "piece" : "pieces" 
+                  )if($avail->{has_supporting_structural_variation});                  
+                  
   return sprintf qq{<div class="summary_panel">$failed%s</div>}, $self->new_twocol(
     $self->variation_class,
     $self->get_allele_types($source),
@@ -48,7 +73,8 @@ sub content {
     $self->get_strains,
     $self->location($mappings),
     $self->size($mappings),
-    $validation ? ['Validation status', $validation] : ()
+    $validation ? ['Validation status', $validation] : (),
+    @str_array ? ["About this structural variant", sprintf('This structural variant %s.', $self->join_with_and(@str_array))] : ()
   )->render;
 }
 
@@ -138,7 +164,7 @@ sub get_study {
   return unless $study_name;
   
   my $study_description = $self->add_pubmed_link($object->study_description);
-  my $study_line        = sprintf '<a href="%s" class="constant">%s</a>', $object->study_url, $study_name;
+  my $study_line        = sprintf '<a href="%s" class="constant" rel="external">%s</a>', $object->study_url, $study_name;
   
   return ['Study', "$study_line - $study_description"];
 }
@@ -176,7 +202,7 @@ sub add_pubmed_link {
     foreach (@temp) {
       if (/PMID/) {
         (my $id = $_)   =~ s/PMID://; 
-        my $pubmed_url  = $hub->get_ExtURL_link($_, 'PUBMED', $id); 
+        my $pubmed_url  = $hub->get_ExtURL_link($_, 'EPMC_MED', $id);
            $description =~ s/$_/$pubmed_url/;
       }
     }
@@ -386,8 +412,9 @@ sub clinical_significance {
 
   return unless (scalar(@$clin_sign));
 
-  my $img = qq{<img src="/i/16/info.png" class="_ht" style="position:relative;top:2px;width:12px;height:12px;margin-left:2px" title="Click to view the explanation (from the ClinVar website)"/>};
-  my $info_link = $hub->get_ExtURL_link($img, "CLIN_SIG", '');
+  my $src = $self->img_url.'/16/info.png';
+  my $img = qq{<img src="$src" class="_ht" style="position:relative;top:2px;width:12px;height:12px;margin-left:2px" title="Click to see all the clinical significances"/>};
+  my $info_link = qq{<a href="/info/genome/variation/data_description.html#clin_significance" target="_blank">$img</a>};
 
   my %clin_sign_icon;
   foreach my $cs (@{$clin_sign}) {
@@ -406,8 +433,8 @@ sub clinical_significance {
   my $cs_content = join("",
     map {
       sprintf(
-        '<a href="%s"><img class="_ht" style="margin-right:6px;margin-bottom:-2px;vertical-align:top" title="%s" src="/i/val/clinsig_%s.png" /></a>',
-        $url, $_, $clin_sign_icon{$_}
+        '<a href="%s"><img class="_ht" style="margin-right:6px;margin-bottom:-2px;vertical-align:top" title="%s" src="%s/val/clinsig_%s.png" /></a>',
+        $url, $_, $self->img_url, $clin_sign_icon{$_}
       )
     } @$clin_sign
   );

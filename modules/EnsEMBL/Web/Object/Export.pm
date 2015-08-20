@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,6 +100,21 @@ sub config {
   my $self = shift;
   
   $self->__data->{'config'} = {
+    fasta => {
+      label => 'FASTA sequence',
+      formats => [
+        [ 'fasta', 'FASTA sequence' ]
+      ],
+      params => [
+        [ 'cdna',    'cDNA' ],
+        [ 'coding',  'Coding sequence' ],
+        [ 'peptide', 'Peptide sequence' ],
+        [ 'utr5',    "5' UTR" ],
+        [ 'utr3',    "3' UTR" ],
+        [ 'exon',    'Exons' ],
+        [ 'intron',  'Introns' ]
+      ]
+    },
     features => {
       label => 'Feature File',
       formats => [
@@ -794,7 +809,7 @@ sub feature {
     @mapping_result = qw(seqid source type start end score strand phase);
   }
   %vals = (%vals, (
-     type   => $type || ($feature->can('primary_tag') ? $feature->primary_tag : '.sdf'),
+     type   => $type || ($feature->can('primary_tag') ? $feature->primary_tag : 'sequence_feature'),
      source => $feature->can('source_tag') ? $feature->source_tag  : $feature->can('source') ? $feature->source : 'Ensembl',
      score  => $feature->can('score') ? $feature->score : '.',
      phase  => '.'

@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -122,6 +122,11 @@ div.fbutton-right div.ff-right {
 }
 div.ff-notes {
   padding: 3px 0 3px 50%;
+}
+div.inline-label {
+  float: left;
+  margin-right: 10px;
+  line-height: 20px;
 }
 .ftext, .ftextarea {
   border: [[PANEL_BORDER]] solid 1px;
@@ -430,4 +435,9 @@ form.freeform fieldset .form-field .ff-right {
   display:inline!important;
   margin: 0;
   padding: 0;
+}
+
+textarea.inactive {
+  font-style: italic;
+  color: #999;
 }

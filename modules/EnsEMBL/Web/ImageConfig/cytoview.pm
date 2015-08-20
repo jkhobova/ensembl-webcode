@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ sub init {
   );
   
   $self->modify_configs(
-    [ 'variation_feature_structural_larger', 'variation_feature_structural_smaller', 'somatic_sv_feature' ],
+    [ 'variation_feature_structural_larger', 'variation_feature_structural_smaller', 'somatic_sv_feature', 'variation_feature_structural_DECIPHER' ],
     { display => 'off', menu => 'yes' }
   );
   

@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ limitations under the License.
 package EnsEMBL::Web::Component::Transcript::TranscriptSummary;
 
 use strict;
+use HTML::Entities  qw(encode_entities);
 
 use base qw(EnsEMBL::Web::Component::Transcript);
 
@@ -65,9 +66,9 @@ sub content {
 
   ## add TSL info
   if ($tsl && ($tsl = $tsl->value)) {
-    $table->add_row('Transcript Support Level', sprintf('<p>%s</p>', $tsl =~ s/^tsl([^\s]+).*$/$1/gr));
+    my $key = $tsl =~ s/^tsl([^\s]+).*$/TSL:$1/gr;
+    $table->add_row('Transcript Support Level (TSL)', sprintf('<span class="ts_flag">%s</span>', $self->helptip($key, $self->get_glossary_entry($key).$self->get_glossary_entry('TSL'))));
   }
-
   $table->add_row('Ensembl version', $object->stable_id.'.'.$object->version);
 
   ## add some Vega info
@@ -98,7 +99,7 @@ sub content {
     $table->add_row('Type', $type) if $type;
   }
   ## add prediction method
-  my $label = ($db eq 'vega' || $species_defs->ENSEMBL_SITETYPE eq 'Vega' ? 'Curation' : 'Prediction') . ' Method';
+  my $label = ($db eq 'vega' || $species_defs->ENSEMBL_SITETYPE eq 'Vega' ? 'Curation' : 'Annotation') . ' Method';
   my $text  = "No $label defined in database";
 
   eval {
@@ -126,8 +127,14 @@ sub content {
   ## add frameshift introns info
   my $frameshift_introns = $object->get_frameshift_introns;
 
-  $table->add_row('Frameshift introns', $self->glossary_mouseover('Frameshift intron', 'Frameshift introns') . " occur at intron number(s)  $frameshift_introns.") if $frameshift_introns;
+  $table->add_row('Frameshift introns', $self->glossary_helptip('Frameshift introns', 'Frameshift intron') . " occur at intron number(s)  $frameshift_introns.") if $frameshift_introns;
 
+
+  ## add trans-spliced transcript info
+  my $trans_spliced_transcript_info = $object->get_trans_spliced_transcript_info;
+  $table->add_row('Trans-spliced' , sprintf('This is a %s transcript', $self->helptip('trans-spliced', $trans_spliced_transcript_info->description))) if $trans_spliced_transcript_info;
+
+  
   ## add stop gained/lost variation info
   my @attrib_codes = qw(StopLost StopGained);
   my $codons;

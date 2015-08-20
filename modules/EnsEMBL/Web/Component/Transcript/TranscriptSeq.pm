@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -124,19 +124,32 @@ sub get_sequence_data {
         $flip = 1 - $flip;
       }
       
-      if ($config->{'translation'}) {        
+      if ($config->{'translation'}) {
         $protein_seq->{'seq'}[$i]{'letter'}     = $protein_seq->{'seq'}[$i + 2]{'letter'} = '-';
         $protein_seq->{'seq'}[$i + 1]{'letter'} = substr($peptide, int(($i + 1 - $cd_start) / 3), 1) || ($i + 1 < $cd_end ? '*' : '.');
       }
     }
   };
   
-  # If the transcript starts mid-codon, make the protein sequence show -X- at the start
-  if ($config->{'translation'} && $start_pad) {
-    my $pos     = scalar grep $protein_seq->{'seq'}[$_]{'letter'} eq '.', 0..2; # Find the number of . characters at the start
+  # If the transcript starts or ends mid-codon, make the protein sequence show -X- at the start or the end respectively
+  if ($config->{'translation'}) {
+    my ($pos_start, $pos_end, $strip_end);
     my @partial = qw(- X -);
-    
-    $protein_seq->{'seq'}[$pos]{'letter'} = $partial[$pos] while $pos--; # Replace . with as much of -X- as fits in the space
+
+    if ($start_pad) {
+      ($pos_start) = grep $protein_seq->{'seq'}[$_ - 1]{'letter'} eq '.', 1..3; # Find the positions of . characters at the start
+    }
+
+    # If length is multiple of 3, ignore it. If length is 1 or 2 more than a multiple of 3 we use 2 or 1 (respectively) characters from @partial to complete 3 bases.
+    if ($strip_end = (3 - ($cd_end - $cd_start + 1) % 3) % 3) {
+      ($pos_end) = grep $protein_seq->{'seq'}[$_ + 1]{'letter'} =~ /\*|\-/, -3..-1; # Find the positions of - or * characters at the end
+    }
+
+    # Replace with as much of -X- as fits in the space and remove the extra chars from the end if required
+    $protein_seq->{'seq'}[$pos_start]{'letter'} = $partial[ $pos_start ]  while $pos_start--;
+    $protein_seq->{'seq'}[$pos_end]{'letter'}   = $partial[ $pos_end ]    while $pos_end++;
+
+    splice $protein_seq->{'seq'}, -1 * $strip_end if $strip_end;
   }
   
   if ($config->{'snp_display'} and $adorn ne 'none') {
@@ -338,7 +351,7 @@ sub initialize {
   };
  
   $config->{'display_width'} = $hub->param('display_width') || $vc->get('display_width'); 
-  $config->{$_} = ($hub->param($_) eq 'on' || $vc->get($_) eq 'on') ? 1 : 0 for qw(exons codons coding_seq translation rna snp_display utr hide_long_snps);
+  $config->{$_} = ($hub->param($_) eq 'on' || $vc->get($_) eq 'on') ? 1 : 0 for qw(exons exons_case codons coding_seq translation rna snp_display utr hide_long_snps);
   $config->{'codons'}      = $config->{'coding_seq'} = $config->{'translation'} = 0 unless $object->Obj->translation;
  
   if ($hub->param('line_numbering') ne 'off') {

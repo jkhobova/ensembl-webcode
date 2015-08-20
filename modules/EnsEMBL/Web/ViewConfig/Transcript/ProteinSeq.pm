@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ sub init {
   
   $self->set_defaults({
     exons       => 'on',
+    exons_case  => 'off',
     snp_display => 'off',
     number      => 'off'
   });
@@ -37,7 +38,7 @@ sub init {
 
 sub field_order {
   my $self = shift;
-  my @order = qw(display_width exons);
+  my @order = qw(display_width exons exons_case);
   push @order, $self->variation_fields if $self->species_defs->databases->{'DATABASE_VARIATION'};
   push @order, 'number';
   return @order;

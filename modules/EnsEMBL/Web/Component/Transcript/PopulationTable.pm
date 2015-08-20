@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,7 +44,6 @@ sub content {
   }
   my $snp_data = $self->get_page_data(\@samples);
 
-  
   my $columns  = [
     { key => 'ID',          sort => 'html'                                               },
   ];
@@ -70,13 +69,13 @@ sub content {
  
   my $message = '
         <p>
-          There are no variations in this region in %s, or the variations have been filtered out by the options set in the page configuration. 
+          There are no variants in this region in %s, or the variants have been filtered out by the options set in the page configuration. 
           To change the filtering options select the "Configure this page" link from the menu on the left hand side of this page.
         </p><br />
       ';
 
   if ($hub->param('data_grouping') eq 'by_variant') {
-    $html .= "<h2>Variations in position</h2>";
+    $html .= "<h2>Variants in position</h2>";
     my (@rows, @missing);
     foreach my $sample (@samples) {
       my @data = map @{$snp_data->{$_}{$sample} || []}, sort keys %$snp_data;
@@ -104,12 +103,12 @@ sub content {
         $tables{$sample} = sprintf($message, 'this strain');
       }
     }  
-  $html .= "<h2>Variations in $_:</h2>$tables{$_}" for keys %tables;
+  $html .= "<h2>Variants in $_:</h2>$tables{$_}" for keys %tables;
   }
 
   $html .= $self->_info('Configuring the display', sprintf('
     <p>These %ss are displayed by default: <b>%s.</b><br />
-    Select the "Configure this page" link in the left hand menu to customise which %ss and types of variation are displayed in the tables above.</p>',
+    Select the "Configure this page" link in the left hand menu to customise which %ss and types of variants are displayed in the tables above.</p>',
     $strain_name, join(', ', $self->object->get_samples('default')), $strain_name
   ));  
   
@@ -135,117 +134,119 @@ sub get_page_data {
 
   foreach my $sample (@$samples) {
     my $munged_transcript = $object->get_munged_slice('tsv_transcript', $hub->param('context') eq 'FULL' ? 1000 : $hub->param('context'), 1) || warn "Couldn't get munged transcript";
-    my $sample_slice      = $munged_transcript->[1]->get_by_strain($sample);
+    ## Don't assume that a sample ID taken from CGI input is actually present in this species!
+    my $sample_slice      = eval { $munged_transcript->[1]->get_by_strain($sample); };
 
-    my ($allele_info, $consequences) = $object->getAllelesConsequencesOnSlice($sample, 'tsv_transcript', $sample_slice);
+    unless ($@) {
+      my ($allele_info, $consequences) = $object->getAllelesConsequencesOnSlice($sample, 'tsv_transcript', $sample_slice);
     
-    next unless @$consequences && @$allele_info;
+      next unless @$consequences && @$allele_info;
     
-    my ($coverage_level, $raw_coverage_obj) = $object->read_coverage($sample, $sample_slice);
-    my @coverage_obj = @{$raw_coverage_obj||[]} ? sort { $a->start <=> $b->start } @$raw_coverage_obj : ();
-    my $index        = 0;
+      my ($coverage_level, $raw_coverage_obj) = $object->read_coverage($sample, $sample_slice);
+      my @coverage_obj = @{$raw_coverage_obj||[]} ? sort { $a->start <=> $b->start } @$raw_coverage_obj : ();
+      my $index        = 0;
     
-    foreach my $allele_ref (@$allele_info) {
-      my $allele      = $allele_ref->[2];
-      my $conseq_type = $consequences->[$index];
+      foreach my $allele_ref (@$allele_info) {
+        my $allele      = $allele_ref->[2];
+        my $conseq_type = $consequences->[$index];
       
-      $index++;
+        $index++;
       
-      next unless $conseq_type && $allele;
+        next unless $conseq_type && $allele;
       
-      my $cons = $conseq_type->consequence_type($con_format);
-      $cons = $conseq_type->consequence_type('label') if $cons->[0] eq '';
+        my $cons = $conseq_type->consequence_type($con_format);
+        $cons = $conseq_type->consequence_type('label') if $cons->[0] eq '';
       
-      my $type       = join ', ', @{$cons || []};
-      $type         .= ' (Same As Ref. Assembly)' if $type eq 'SARA';
-      my $offset     = $sample_slice->strand > 0 ? $sample_slice->start - 1 :  $sample_slice->end + 1;
-      my $chr_start  = $allele->start + $offset;
-      my $chr_end    = $allele->end   + $offset;
-      my $class      = $allele->variation_feature->var_class();
-      my $codons     = $conseq_type->codons;
-      my $chr        = $sample_slice->seq_region_name;
-      my $aa_alleles = $conseq_type->pep_allele_string;
-      my $aa_coord   = $conseq_type->translation_start;
-      $aa_coord     .= $aa_coord == $conseq_type->translation_end ? "": $conseq_type->translation_end;
-      my $cds_coord  = $conseq_type->cds_start;
-      $cds_coord    .= '-' . $conseq_type->cds_end unless $conseq_type->cds_start == $conseq_type->cds_end;
+        my $type       = join ', ', @{$cons || []};
+        $type         .= ' (Same As Ref. Assembly)' if $type eq 'SARA';
+        my $offset     = $sample_slice->strand > 0 ? $sample_slice->start - 1 :  $sample_slice->end + 1;
+        my $chr_start  = $allele->start + $offset;
+        my $chr_end    = $allele->end   + $offset;
+        my $class      = $allele->variation_feature->var_class();
+        my $codons     = $conseq_type->codons;
+        my $chr        = $sample_slice->seq_region_name;
+        my $aa_alleles = $conseq_type->pep_allele_string;
+        my $aa_coord   = $conseq_type->translation_start;
+        $aa_coord     .= $aa_coord == $conseq_type->translation_end ? "": $conseq_type->translation_end;
+        my $cds_coord  = $conseq_type->cds_start;
+        $cds_coord    .= '-' . $conseq_type->cds_end unless $conseq_type->cds_start == $conseq_type->cds_end;
       
-      $codons     =~ s/\//\|/g;
-      $aa_alleles =~ s/\//\|/g;
+        $codons     =~ s/\//\|/g;
+        $aa_alleles =~ s/\//\|/g;
       
-      my ($pos, $status);
-      if ($chr_end < $chr_start) {
-        $pos = "between&nbsp;$chr_end&nbsp;&amp;&nbsp;$chr_start";
-      } elsif ($chr_end > $chr_start) {
-        $pos = "$chr_start&nbsp;-&nbsp;$chr_end";
-      } else {
-        $pos = $chr_start;
-      }
-
-      # Codon - make the letter for the SNP position in the codon bold
-      if ($codons) {
-        my $position = ($conseq_type->cds_start % 3 || 3) - 1;
-        $codons =~ s/([ACGT])/<b>$1<\/b>/g;
-        $codons =~ tr/acgt/ACGT/;
-      }
-      
-      # read coverage in mouse?
-      if (grep $_ eq 'Sanger', @{$allele->get_all_sources || []}) {
-        my $allele_start = $allele->start;
-        my $coverage;
-        
-        foreach (@coverage_obj) {
-          next if $allele_start > $_->end;
-          last if $allele_start < $_->start;
-          $coverage = $_->level if $_->level > $coverage;
+        my ($pos, $status);
+        if ($chr_end < $chr_start) {
+          $pos = "between&nbsp;$chr_end&nbsp;&amp;&nbsp;$chr_start";
+        } elsif ($chr_end > $chr_start) {
+         $pos = "$chr_start&nbsp;-&nbsp;$chr_end";
+        } else {
+          $pos = $chr_start;
         }
+
+        # Codon - make the letter for the SNP position in the codon bold
+        if ($codons) {
+          my $position = ($conseq_type->cds_start % 3 || 3) - 1;
+          $codons =~ s/([ACGT])/<b>$1<\/b>/g;
+          $codons =~ tr/acgt/ACGT/;
+        }
+      
+        # read coverage in mouse?
+        if (grep $_ eq 'Sanger', @{$allele->get_all_sources || []}) {
+          my $allele_start = $allele->start;
+          my $coverage;
         
-        $coverage = '>' . ($coverage - 1) if $coverage == $coverage_level->[-1];
-        $status   = "resequencing coverage $coverage";
-      } else {
-        my $tmp        = $allele->variation;
-        my @validation = $tmp ? @{$tmp->get_all_validation_states || []} : ();
-        $status        = join ', ',  @validation;
-        $status        =~ s/freq/frequency/;
-      }
+          foreach (@coverage_obj) {
+            next if $allele_start > $_->end;
+            last if $allele_start < $_->start;
+            $coverage = $_->level if $_->level > $coverage;
+          }
+        
+          $coverage = '>' . ($coverage - 1) if $coverage == $coverage_level->[-1];
+          $status   = "resequencing coverage $coverage";
+        } else {
+          my $tmp        = $allele->variation;
+          my @validation = $tmp ? @{$tmp->get_all_validation_states || []} : ();
+          $status        = join ', ',  @validation;
+          $status        =~ s/freq/frequency/;
+        }
       
-      # url
-      my $vid = $allele->variation_name;
-      my $source = $allele->source;
-      my $vf = $allele->variation_feature->dbID; 
-      my $url = $base_url.qq{;v=$vid;vf=$vf;source=$source};
+        # url
+        my $vid = $allele->variation_name;
+        my $source = $allele->source;
+        my $vf = $allele->variation_feature->dbID; 
+        my $url = $base_url.qq{;v=$vid;vf=$vf;source=$source};
       
-      # source
-      #my $sources = join ", " , @{$allele->get_all_sources || [] };
-      my $sources = $source;
+        # source
+        #my $sources = join ", " , @{$allele->get_all_sources || [] };
+        my $sources = $source;
       
-      my $row = {
-        ID          => sprintf('<a href="%s">%s</a>', $url, $allele->variation_name),
-        Class       => $class                     || '-',
-        sample      => $sample,
-        Source      => $sources                   || '-',
-        ref_alleles => $allele->ref_allele_string || '-',
-        Alleles     => $allele->allele_string     || '-',
-        Ambiguity   => ambiguity_code($allele->allele_string),
-        Status      => $status                    || '-',
-        chr         => "$chr:$pos",
-        Codon       => $codons                    || '-',
-        consequence => $type,
-        cdscoord    => $cds_coord                 || '-'
-      };
+        my $row = {
+          ID          => sprintf('<a href="%s">%s</a>', $url, $allele->variation_name),
+          Class       => $class                     || '-',
+          sample      => $sample,
+          Source      => $sources                   || '-',
+          ref_alleles => $allele->ref_allele_string || '-',
+          Alleles     => $allele->allele_string     || '-',
+          Ambiguity   => ambiguity_code($allele->allele_string),
+          Status      => $status                    || '-',
+          chr         => "$chr:$pos",
+          Codon       => $codons                    || '-',
+          consequence => $type,
+          cdscoord    => $cds_coord                 || '-'
+        };
  
-      if ($aa_alleles) {
-        $row->{'aachange'} = $aa_alleles;
-        $row->{'aacoord'}  = $aa_coord;
-      } else {
-        $row->{'aachange'} = '-';
-        $row->{'aacoord'}  = '-';
+        if ($aa_alleles) {
+          $row->{'aachange'} = $aa_alleles;
+          $row->{'aacoord'}  = $aa_coord;
+        } else {
+          $row->{'aachange'} = '-';
+          $row->{'aacoord'}  = '-';
+        } 
+
+        push @{$snp_data{"$chr:$pos"}{$sample}}, $row;
       }
-      
-      push @{$snp_data{"$chr:$pos"}{$sample}}, $row;
     }
   }
-  
   return \%snp_data;
 } 
 

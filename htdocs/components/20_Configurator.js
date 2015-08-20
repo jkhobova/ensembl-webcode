@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,7 +52,11 @@ Ensembl.Panel.Configurator = Ensembl.Panel.ModalContent.extend({
     this.base();
     
     if (this.params.hash) {
-      this.elLk.links.removeClass('active').children('.' + this.params.hash).parent().addClass('active');
+      var new_active = this.elLk.links.children('.' + this.params.hash);
+      if(new_active.length) {
+        this.elLk.links.removeClass('active');
+        new_active.parent().addClass('active');
+      }
       delete this.params.hash;
     }
     
@@ -280,6 +284,7 @@ Ensembl.Panel.Configurator = Ensembl.Panel.ModalContent.extend({
     });
     
     this.getContent();
+    this.el.externalLinks();
   },
   
   showConfigMenu: function (e) {
@@ -1088,6 +1093,8 @@ Ensembl.Panel.Configurator = Ensembl.Panel.ModalContent.extend({
     }
     
     button.attr('title', function () { return $(this).hasClass('open') ? 'Hide information' : 'Click for more information'; });
+
+    desc.find('._dyna_load').removeClass('_dyna_load').dynaLoad({complete: function () { this.externalLinks(); }});
     
     this.elLk.help = this.elLk.help.add(button).filter('.open');
   }, 

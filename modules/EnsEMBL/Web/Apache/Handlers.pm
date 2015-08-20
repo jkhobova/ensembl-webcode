@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ sub childInitHandler {
   warn sprintf "Child initialised: %7d %04d-%02d-%02d %02d:%02d:%02d\n", $$, $X[5]+1900, $X[4]+1, $X[3], $X[2], $X[1], $X[0] if $SiteDefs::ENSEMBL_DEBUG_FLAGS & $SiteDefs::ENSEMBL_DEBUG_HANDLER_ERRORS;
 }
 
-
+sub redirect_to_mobile {}
 sub redirect_to_nearest_mirror {
 ## Redirects requests based on IP address - only used if the ENSEMBL_MIRRORS site parameter is configured
 ## This does not do an actual HTTP redirect, but sets a cookie that tells the JavaScript to perform a client side redirect after specified time interval
@@ -215,7 +215,7 @@ sub postReadRequestHandler {
   
   # Ensembl DEBUG cookie
   $r->headers_out->add('X-MACHINE' => $SiteDefs::ENSEMBL_SERVER) if $cookies->{'ENSEMBL_DEBUG'};
-  
+
   return;
 }
 
@@ -243,6 +243,12 @@ sub cleanURI {
   return DECLINED;
 }
 
+sub redirect_species_page {
+  my ($species_name)  = @_;
+
+  return $species_name eq 'common' ? 'index.html' : "/$species_name/Info/Index";
+}
+
 sub handler {
   my $r = shift; # Get the connection handler
   
@@ -251,10 +257,21 @@ sub handler {
   my $u           = $r->parsed_uri;
   my $file        = $u->path;
   my $querystring = $u->query;
-  my @web_cookies = EnsEMBL::Web::Cookie->retrieve($r, map {'name' => $_, 'encrypted' => 1}, $SiteDefs::ENSEMBL_SESSION_COOKIE, $SiteDefs::ENSEMBL_USER_COOKIE);
-  my $cookies     = {
-    'session_cookie'  => $web_cookies[0] || EnsEMBL::Web::Cookie->new($r, {'name' => $SiteDefs::ENSEMBL_SESSION_COOKIE, 'encrypted' => 1}),
-    'user_cookie'     => $web_cookies[1] || EnsEMBL::Web::Cookie->new($r, {'name' => $SiteDefs::ENSEMBL_USER_COOKIE,    'encrypted' => 1})
+  my @web_cookies = ({
+    'name'            => $SiteDefs::ENSEMBL_SESSION_COOKIE,
+    'encrypted'       => 1,
+    'domain'          => $SiteDefs::ENSEMBL_SESSION_COOKIEHOST,
+  }, {
+    'name'            => $SiteDefs::ENSEMBL_USER_COOKIE,
+    'encrypted'       => 1,
+    'domain'          => $SiteDefs::ENSEMBL_USER_COOKIEHOST,
+  });
+
+  my @existing_cookies = EnsEMBL::Web::Cookie->retrieve($r, @web_cookies);
+
+  my $cookies = {
+    'session_cookie'  => $existing_cookies[0] || EnsEMBL::Web::Cookie->new($r, $web_cookies[0]),
+    'user_cookie'     => $existing_cookies[1] || EnsEMBL::Web::Cookie->new($r, $web_cookies[1]),
   };
 
   my @raw_path = split '/', $file;
@@ -275,6 +292,25 @@ sub handler {
     $redirect = 1;
   }  
 
+  ## Redirect to blog from /jobs
+  if ($raw_path[0] eq 'jobs') {
+    $r->uri('http://www.ensembl.info/blog/category/jobs/');
+    $redirect = 1;
+  }
+
+  ## Fix for moved eHive documentation
+  if ($file =~ /info\/docs\/eHive\//) {
+    $r->uri('/info/docs/eHive.html');
+    $redirect = 1;
+  }
+
+  ## Trackhub short URL
+  if ($raw_path[0] eq 'TrackHub') {
+    $file = '/UserData/TrackHubRedirect?'.$querystring;
+    $r->uri($file);
+    $redirect = 1;
+  }
+
   ## Simple redirect to VEP
 
   if ($SiteDefs::ENSEMBL_SUBTYPE eq 'Pre' && $file =~ /\/vep/i) { ## Pre has no VEP, so redirect to tools page
@@ -287,6 +323,12 @@ sub handler {
     $r->uri('/info/docs/tools/vep/index.html');
     $redirect = 1;
   }
+
+ if ($file =~ /\/info\/docs\/(variation|funcgen|compara|genebuild|microarray)/) {
+   $file =~ s/docs/genome/;
+   $r->uri($file);
+   $redirect = 1;
+ }
 
   if ($redirect) {
     $r->headers_out->add('Location' => $r->uri);
@@ -472,14 +514,16 @@ sub handler {
   $script = join '/', @path_segments;
 
   # Permanent redirect for old species home pages:
-  # e.g. /Homo_sapiens or Homo_sapiens/index.html -> /Homo_sapiens/Info/Index
-  if ($species && $species_name && (!$script || $script eq 'index.html')) {
-    $r->uri($species_name eq 'common' ? 'index.html' : $species_defs->ENSEMBL_SUBTYPE =~ /mobile/i ? "/$species_name/Info/Annotation#assembly" : "/$species_name/Info/Index"); #additional if for mobile site different species home page
+  # e.g. /Homo_sapiens or Homo_sapiens/index.html -> /Homo_sapiens/Info/Index  
+  if ($species && $species_name && (!$script || $script eq 'index.html')) {      
+    my $species_uri = redirect_species_page($species_name); #move to separate function so that it can be overwritten in mobile plugin
+
+    $r->uri($species_uri);
     $r->headers_out->add('Location' => $r->uri);
     $r->child_terminate;
     $ENSEMBL_WEB_REGISTRY->timer_push('Handler "REDIRECT"', undef, 'Apache');
     
-    return HTTP_MOVED_PERMANENTLY;
+    return HTTP_MOVED_PERMANENTLY;  
   }
   
   #commenting this line out because we do want biomart to redirect. If this is causing problem put it back.
@@ -488,26 +532,9 @@ sub handler {
   my $path = join '/', $species || (), $script || (), $path_info || ();
   
   $r->uri("/$path");
-  
-  my $filename = $MEMD ? $MEMD->get("::STATIC::$path") : '';
-  
-  # Search the htdocs dirs for a file to return
-  # Exclude static files (and no, html is not a static file in ensembl)
-  if ($path !~ /\.(\w{2,3})$/) {
-    if (!$filename) {
-      foreach my $dir (grep { -d $_ && -r $_ } @SiteDefs::ENSEMBL_HTDOCS_DIRS) {
-        my $f = "$dir/$path";
-        
-        if (-d $f || -r $f) {
-          $filename = -d $f ? '! ' . $f : $f;
-          $MEMD->set("::STATIC::$path", $filename, undef, 'STATIC') if $MEMD;
-          
-          last;
-        }
-      }
-    }
-  }
-  
+
+  my $filename = get_static_file_for_path($r, $path);
+
   if ($filename =~ /^! (.*)$/) {
     $r->uri($r->uri . ($r->uri      =~ /\/$/ ? '' : '/') . 'index.html');
     $r->filename($1 . ($r->filename =~ /\/$/ ? '' : '/') . 'index.html');
@@ -642,7 +669,9 @@ sub push_script_line {
   my $prefix = shift || 'SCRIPT';
   my $extra  = shift;
   my @X      = localtime;
-  
+
+  return if $r->subprocess_env->{'REQUEST_URI'} =~ /^\/CSS\?/;
+
   warn sprintf(
     "%s: %s%9d %04d-%02d-%02d %02d:%02d:%02d %s %s\n",
     $prefix, hostname, $$,
@@ -651,6 +680,31 @@ sub push_script_line {
   );
   
   $r->subprocess_env->{'LOG_TIME'} = time;
+}
+
+sub get_static_file_for_path {
+  my ($r, $path) = @_;
+
+  my $filename = $MEMD ? $MEMD->get("::STATIC::$path") : '';
+  
+  # Search the htdocs dirs for a file to return
+  # Exclude static files (and no, html is not a static file in ensembl)
+  if ($path !~ /\.(\w{2,3})$/) {
+    if (!$filename) {
+      foreach my $dir (grep { -d $_ && -r $_ } @SiteDefs::ENSEMBL_HTDOCS_DIRS) {
+        my $f = "$dir/$path";
+        
+        if (-d $f || -r $f) {
+          $filename = -d $f ? '! ' . $f : $f;
+          $MEMD->set("::STATIC::$path", $filename, undef, 'STATIC') if $MEMD;
+          
+          last;
+        }
+      }
+    }
+  }
+
+  return $filename;
 }
 
 sub  _load_command_null {

@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -89,13 +89,22 @@ sub new_feature {
   push @{$self->{'features'}}, $self->{'feature'};
 }
 
-sub click_location { return map { $_[0]->hub->param("fake_click_$_") || $_[0]->hub->param("click_$_") || () } qw(chr start end); }
+sub click_location { 
+  my $self  = shift;
+  my @coords = map { $self->hub->param("fake_click_$_") || $self->hub->param("click_$_") || () } qw(chr start end); 
+  if ($coords[1] =~ /,/) {
+    my ($start) = split(',', $coords[1]); 
+    my @ends   = split(',', $coords[2]); 
+    @coords = ($coords[0], $start, $ends[-1]);
+  }
+  return @coords;
+}
 
 sub click_data {
   my $self  = shift;
   my $hub   = $self->hub;
   my @click = $self->click_location;
-  
+
   if (scalar @click == 3) {
     my $image_config = $hub->get_imageconfig($hub->param('config'));
     my $node         = $image_config ? $image_config->get_node($hub->param('track')) : undef;
@@ -176,6 +185,26 @@ sub delete_entry_by_type {
       last;
     }
   }
+}
+
+sub helptip {
+  ## Returns a dotted underlined element with given text and hover helptip
+  ## @param Display html
+  ## @param Tip html
+  my ($self, $display_html, $tip_html) = @_;
+  return $tip_html ? sprintf('<span class="ht _ht"><span class="_ht_tip hidden">%s</span>%s</span>', encode_entities($tip_html), $display_html) : $display_html;
+}
+
+sub glossary_helptip {
+  ## Creates a dotted underlined element that has a mouseover glossary helptip (helptip text fetched from glossary table of help db)
+  ## @param Display html
+  ## @param Entry to match the glossary key to fetch help tip html (if not provided, use the display html as glossary key)
+  my ($self, $display_html, $entry) = @_;
+
+  $entry  ||= $display_html;
+  $entry    = $self->hub->glossary_lookup->{$entry} // '';
+
+  return $self->helptip($display_html, $entry);
 }
 
 # Build and print the JSON response

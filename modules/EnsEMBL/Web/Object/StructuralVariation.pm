@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ sub availability {
       
       $availability->{'structural_variation'} = 1;
     
-      $availability->{"has_$_"} = $counts->{$_} for qw(transcripts supporting_structural_variation);
+      $availability->{"has_$_"} = $counts->{$_} for qw(transcripts supporting_structural_variation phenotypes);
       
       $availability->{'has_phenotype'} = 1 if ($self->has_phenotype || $availability->{'has_transcripts'});
  
@@ -87,9 +87,22 @@ sub counts {
     $counts = {};
     $counts->{'transcripts'} = $self->count_transcripts;
     $counts->{'supporting_structural_variation'} = $self->count_supporting_structural_variation;
-    
+    $counts->{'phenotypes'} = $self->count_phenotypes;    
+
     $MEMD->set($key, $counts, undef, 'COUNTS') if $MEMD;
     $self->{'_counts'} = $counts;
+  }
+
+  return $counts;
+}
+
+sub count_phenotypes {
+  my $self = shift;
+
+  my $counts = 0;
+  my $pf_objects = $self->hub->database('variation')->get_PhenotypeFeatureAdaptor->fetch_all_by_StructuralVariation($self->Obj);
+  if ($pf_objects) {
+    $counts = scalar @$pf_objects;
   }
 
   return $counts;
@@ -140,7 +153,7 @@ sub has_phenotype {
 sub short_caption {
   my $self = shift;
 
-  my $type = 'Structural variation';
+  my $type = 'Structural variant';
   if ($self->class eq 'CNV_PROBE') {
      $type = 'CNV probe';
   }
@@ -157,12 +170,12 @@ sub short_caption {
 
 sub caption {
  my $self = shift;
- my $type = 'Structural variation';
+ my $type = 'Structural variant';
  if ($self->class eq 'CNV_PROBE') {
-   $type = 'Copy number variation probe';
+   $type = 'Copy number variant probe';
  }
  elsif($self->is_somatic) {
-   $type = 'Somatic structural variation';
+   $type = 'Somatic structural variant';
  }
  my $caption = $type.': '.$self->name;
 

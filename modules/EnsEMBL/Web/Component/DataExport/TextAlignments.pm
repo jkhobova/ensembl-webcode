@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,7 +35,14 @@ sub content {
 
   my $settings = $viewconfig->form_fields;
 
-  $settings->{'Hidden'} = ['align'];
+  ## Pass species selection to output
+  my @species_options;
+  my $align = $hub->param('align');
+  foreach (grep { /species_$align/ } $hub->param) {
+    push @species_options, $_;
+  }
+
+  $settings->{'Hidden'} = ['align', @species_options];
 
   ## Options per format
   my @field_order = $viewconfig->field_order;

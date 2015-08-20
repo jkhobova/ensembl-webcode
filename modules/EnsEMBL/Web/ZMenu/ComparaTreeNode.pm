@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ use strict;
 use URI::Escape qw(uri_escape);
 use IO::String;
 use Bio::AlignIO;
-use EnsEMBL::Web::TmpFile::Text;
+use EnsEMBL::Web::File::Dynamic;
 
 use base qw(EnsEMBL::Web::ZMenu);
 
@@ -39,9 +39,11 @@ sub content {
   my $node_id         = $hub->param('node')                   || die 'No node value in params';
   my $node            = $tree->find_node_by_node_id($node_id);
   
+  if (!$node and $tree->tree->{'_supertree'}) {
+    $node = $tree->tree->{'_supertree'}->find_node_by_node_id($node_id);
+  }
   unless ($node) {
-    $tree = $tree->tree->{'_supertree'};
-    $node = $tree->find_node_by_node_id($node_id);
+    $node = $tree->adaptor->fetch_node_by_node_id($node_id);
     die "No node_id $node_id in ProteinTree" unless $node;
   }
   
@@ -352,29 +354,36 @@ sub content {
         order => 13
       });
     }
+  
+    ## Build URL for data export 
+    my $gene_name;
+    my $gene = $self->object->Obj;
+    my $dxr    = $gene->can('display_xref') ? $gene->display_xref : undef;
+
+    my $gene_name = $hub->species eq 'Multi' ? $hub->param('gt') : $dxr ? $dxr->display_id : $gene->stable_id;
     
-    # Subtree dumps
-    my ($url_align, $url_tree) = $self->dump_tree_as_text($node);
-    
+    my $params = {
+                'type'      => 'DataExport',
+                'action'    => 'GeneTree',
+                'data_type' => 'Gene',
+                'component' => 'ComparaTree',
+                'gene_name' => $gene_name,
+                'align'     => 'tree',
+                'node'      => $node_id,
+                };
+
     $self->add_entry({
-      type     => 'View Sub-tree',
-      label    => 'Alignment: FASTA',
-      link     => $url_align,
-      external => 1 ,
-      order    => 14
-    });
-    
-    $self->add_entry({
-      type     => 'View Sub-tree',
-      label    => 'Tree: New Hampshire',
-      link     => $url_tree,
-      external => 1,
-      order    => 15
-    });
-    
+      type        => 'Export sub-tree',
+      label       => 'Tree or Alignment',
+      link        => $hub->url($params),
+      link_class  => 'modal_link',
+      order       => 14,
+    }); 
+
     # Jalview
+    my ($url_align, $url_tree) = $self->dump_tree_as_text($node);
     $self->add_entry({
-      type       => 'View Sub-tree',
+      type       => 'View sub-tree',
       label      => 'Expand for Jalview',
       link_class => 'expand',
       order      => 16,
@@ -396,21 +405,27 @@ sub dump_tree_as_text {
   my $tree = shift || die 'Need a ProteinTree object';
   
   my $var;
-  my $file_fa = EnsEMBL::Web::TmpFile::Text->new(extension => 'fa', prefix => 'gene_tree');
-  my $file_nh = EnsEMBL::Web::TmpFile::Text->new(extension => 'nh', prefix => 'gene_tree');
+
+  my %args = (
+                'hub'             => $self->hub,
+                'sub_dir'         => 'gene_tree',
+                'input_drivers'   => ['IO'],
+                'output_drivers'  => ['IO'],
+              );
+
+  my $file_fa = EnsEMBL::Web::File::Dynamic->new(extension => 'fa', %args);
+  my $file_nh = EnsEMBL::Web::File::Dynamic->new(extension => 'nh', %args);
+
   my $format  = 'fasta';
   my $align   = $tree->get_SimpleAlign(-APPEND_SP_SHORT_NAME => 1);
   my $aio     = Bio::AlignIO->new(-format => $format, -fh => IO::String->new($var));
   
   $aio->write_aln($align); # Write the fasta alignment using BioPerl
   
-  print $file_fa $var;
-  print $file_nh $tree->newick_format('full_web');
+  $file_fa->write($var);
+  $file_nh->write($tree->newick_format('full_web'));
   
-  $file_fa->save;
-  $file_nh->save;
-
-  return ($file_fa->URL, $file_nh->URL);
+  return ($file_fa->read_url, $file_nh->read_url);
 }
 
 1;

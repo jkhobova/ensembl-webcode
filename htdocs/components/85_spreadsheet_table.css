@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,8 +93,8 @@ body.ie67 .col_toggle ul     { margin: 18px 0 0 -125px; }
 .sorting_asc  { background: url(/i/sort_asc.png) no-repeat right center; }
 .sorting_desc { background: url(/i/sort_desc.png) no-repeat right center; }
 
-.supergroup   { background:[[CONTRAST_BORDER]]!important; font-weight:bold; }
-.subgroup     { background:[[NEUTRAL_BORDER]]!important; font-weight:bold; }
+.supergroup   { background:[[CONTRAST_BG]]!important; font-weight:bold; }
+.subgroup     { background:[[CONFIG_HOVER]]!important; font-weight:bold; }
 .groupmember  { padding-left:1em; }
 
 .toggle_table .sorting { background-image: url(/i/sort_both.png); }
@@ -110,12 +110,9 @@ div.up_arrow   { width: 0; height: 0; border-left: 8px solid transparent; border
 div.down_arrow { width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top:    15px solid red;   }
 div.no_arrow   { width: 15px; height: 15px; background: grey; }
 
-div.score         { -moz-border-radius: 5px; border-radius: 5px; width: 100%; max-width: 50px; color: white; text-align: center; }
-div.score_good    { background: green;  }
-div.score_ok      { background: orange; }
-div.score_bad     { background: red;    }
-div.score_neutral { background: blue;   }
-
 td a.hover_show        { display: none; text-decoration: none; font-size: 90%; position: absolute; margin: -1px 1px; background-color: [[PANEL_BG]]; padding: 2px; }
 tr.bg2 td a.hover_show { background-color: [[NEUTRAL_BG]]; }
 td:hover a.hover_show  { display: inline; }
+
+tr.row-sub td { font-size: 85%; }
+tr.row-sub td:first-child { text-indent:24px; }

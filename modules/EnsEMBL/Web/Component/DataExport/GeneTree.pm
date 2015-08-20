@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ sub content {
   } 
 
 
-  $settings->{'Hidden'} = ['align'];
+  $settings->{'Hidden'} = ['align', 'node'];
   $settings->{'nhx_mode'}     = {
                               'type'    => 'DropDown',
                               'label'   => 'Mode for NHX tree dumping',
@@ -111,26 +111,34 @@ sub default_file_name {
 
 sub phyloxml_settings {
 ### Needed by child module (SpeciesTree)
-  return {
-          'cdna' => {
+  my $self = shift;
+  my $settings = {};
+
+  my $gene = $self->hub->core_object('gene');
+  my $has_cdna = $gene->Obj->canonical_transcript->cdna_coding_start ? 1 : 0;
+  
+  if ($has_cdna) {
+    $settings->{'cdna'} = {
                             'type'    => 'Checkbox',
                             'label'   => 'cDNA rather than protein sequence',
                             'value'   => 'on',
                             'checked' => 1,
-                     },
-          'aligned' => {
+                     };
+  }
+
+  $settings->{'aligned'} = {
                             'type'    => 'Checkbox',
                             'label'   => 'Aligned sequences with gaps',
                             'value'   => 'on',
                             'checked' => 1,
-                        },
-          'no_sequences' => {
-                             'type'    => 'Checkbox',
-                             'label'   => 'Omit sequences',
-                             'value'   => 'on',
-                             'checked' => 0,
-                            },
-  };
+                          };
+  $settings->{'no_sequences'} = {
+                                  'type'    => 'Checkbox',
+                                  'label'   => 'Omit sequences',
+                                  'value'   => 'on',
+                                  'checked' => 0,
+                                  };
+  return $settings;
 }
 
 sub phyloxml_fields {

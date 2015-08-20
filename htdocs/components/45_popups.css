@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,10 +42,14 @@ body.ie6 .floating_popup .spinner      { background-color: [[TINT_BG]]; border: 
 .info_popup td.closed                  { background: url(/i/closed2.gif) 100% 3px no-repeat; cursor: pointer; padding-right: 16px; }
 .info_popup td.opened                  { background: url(/i/open2.gif)   100% 3px no-repeat; cursor: pointer; padding-right: 16px; }
 .info_popup .freq                      { display: inline-block; height: 0.5em; }
-.info_popup .A                         { background-color: #90EE90; }
-.info_popup .T                         { background-color: #EEA2AD; }
-.info_popup .C                         { background-color: #B0C4DE; }
-.info_popup .G                         { background-color: #FFEC8B; }
+.info_popup .base_A                    { background-color: #90EE90; }
+.info_popup .base_T                    { background-color: #EEA2AD; }
+.info_popup .base_C                    { background-color: #B0C4DE; }
+.info_popup .base_G                    { background-color: #FFEC8B; }
+.info_popup .base_1                    { background-color: #4B0082; }
+.info_popup .base_2                    { background-color: #FF1493; }
+.info_popup .base_3                    { background-color: #FF7F50; }
+.info_popup .base_4                    { background-color: #8B4513; }
 .info_popup ul                         { list-style: none; margin: 0; padding: 0; }
 .info_popup ul li                      { list-style-image: none; }
 
@@ -73,9 +77,16 @@ body.ie6 .floating_popup .spinner      { background-color: [[TINT_BG]]; border: 
 .zmenu_holder .row .zmenu tr.header th { width: 180px; }
 .zmenu_holder .grid                    { max-height: 250px; overflow-x: hidden; overflow-y: scroll; }
 
+.zmenu .loc-highlight-a                { line-height: 22px; }
+.zmenu .loc-highlight-a span,
+.zmenu .loc-highlight                  { display: inline-block; background-color: [[BUTTON_BG]]; background-image: url("/i/16/rev/highlight.png"); background-size: 12px auto;
+                                          border: 2px solid [[BUTTON_BG]]; border-radius: 2px;  height: 12px; margin: 2px 0; text-decoration: none; width: 12px; }
+.zmenu .loc-highlight-a:hover span,
+.zmenu .loc-highlight:hover            { background-color: [[BUTTON_BG_HOVER]]; border: 2px solid [[BUTTON_BG_HOVER]]; }
+.zmenu .loc-highlight-a span           { float: left; margin-right: 4px; }
+
 body.ie  .zmenu_holder .grid           { width: 200px; }
 body.ie  .zmenu_holder div.header      { width: 202px; }
 body.ie6 .zmenu_holder span.close,
 body.ie6 .info_popup   span.close      { background-image: url(/i/close2.gif); }
 
-.glossary_mouseover                    { border-bottom: 1px dotted #00c; cursor: pointer; }

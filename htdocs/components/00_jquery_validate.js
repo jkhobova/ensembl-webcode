@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,6 +88,7 @@ $.validator = function (options, form) {
         
         var min = this.className.match(/\bmin_(.+)\b/);
         var max = this.className.match(/\bmax_(.+)\b/);
+        var def = this.className.match(/\bdefault_([^\s]+)\b/);
         
         if (min) {
           input.min = parseFloat(min[1], 10);
@@ -95,6 +96,10 @@ $.validator = function (options, form) {
         
         if (max) {
           input.max = parseFloat(max[1], 10);
+        }
+
+        if (def) {
+          input['default'] = def[1];
         }
       }
     }
@@ -162,7 +167,11 @@ $.extend($.validator, {
         inputs.each(function () {
           var el    = $(this);
           var input = $.extend({}, el.data());
-          
+
+          if (this.value === '' && ('default' in input)) {
+            this.value = input['default'];
+          }
+
           var state = (flag === 'initial' || !input.required) && !this.value ? null :                                       // Not required and no value - do nothing. On initial run, ignore empty fields
                       input.rule && validator.rules[input.rule] ? validator.rules[input.rule].call(validator, this.value) : // Validate against rule
                       input.rule && validator.tests[input.rule] ? validator.tests[input.rule].test(this.value) :            // Validate against test

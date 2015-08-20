@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ sub content {
       )
     ); 
   } elsif ($length >= $self->{'subslice_length'}) {
-    $html .= '<div class="adornment-key"></div>' . $self->chunked_content($length, $self->{'subslice_length'}, { length => $length });
+    $html .= '<div class="_adornment_key adornment-key"></div>' . $self->chunked_content($length, $self->{'subslice_length'}, { length => $length });
   } else {
     $html .= $self->content_sub_slice; # Direct call if the sequence length is short enough
   }
@@ -168,7 +168,7 @@ sub get_sequence_data {
   my %selected       = map { $hub->param("t$_") => $_ } grep s/^t(\d+)$/$1/, $hub->param;
   my @transcripts    = map { $selected{$_->stable_id} ? [ $selected{$_->stable_id}, $_ ] : () } @{$gene->get_all_Transcripts};
   my @sequence       = ([ map {{ letter => $_ }} @gene_seq ]);
-  my @markup         = ({});
+  my @markup         = ({'exons' => { map { $_ => {'type' => ['gene']} } 0..$#gene_seq } });
   
   push @{$config->{'slices'}}, { slice => $slice, name => $gene_name || $gene->stable_id };
   
@@ -192,11 +192,13 @@ sub get_sequence_data {
     }
     
     $crs--;
-    
+
+    my $utr_type = defined $transcript->coding_region_start ? 'eu' : 'exon0'; # if coding_region_start returns unded, exons are marked non-coding
+
     for my $exon (@exons) {
       my $exon_id = $exon->stable_id;
       my ($s, $e) = map $_ - $start, $exon->start, $exon->end;
-      
+
       if ($strand == -1) {
         $_ = $length - $_ - 1, for $s, $e;
         ($s, $e) = ($e, $s);
@@ -224,14 +226,14 @@ sub get_sequence_data {
       }
       
       if ($exon->phase == -1) {
-        $type = 'eu';
+        $type = $utr_type;
       } elsif ($exon->end_phase == -1) {
         $type = 'exon1';
       }
       
       for ($s..$e) {
         push @{$mk->{'exons'}{$_}{'type'}}, $type;
-        $type = $type eq 'exon1' ? 'eu' : 'exon1' if $_ == $crs || $_ == $cre;
+        $type = $type eq 'exon1' ? $utr_type : 'exon1' if $_ == $crs || $_ == $cre;
         
         $mk->{'exons'}{$_}{'id'} .= ($mk->{'exons'}{$_}{'id'} ? "\n" : '') . $exon_id unless $mk->{'exons'}{$_}{'id'} =~ /$exon_id/;
       }
@@ -240,7 +242,12 @@ sub get_sequence_data {
     if ($config->{'exons_only'}) {
       $seq[$_]{'letter'} = '-' for grep !$mk->{'exons'}{$_}, 0..$#seq;
     }
-    
+
+    # finally mark anything left as introns
+    for (0..$#seq) {
+      $mk->{'exons'}{$_}{'type'} ||= ['intron'];
+    }
+
     $self->set_variations($config, $slice, $mk, $transcript, \@seq) if $config->{'snp_display'};
     
     push @sequence, \@seq;
@@ -311,8 +318,6 @@ sub set_variations {
   }
 }
 
-sub class_to_style { return $_[0]->{'class_to_style'} ||= { %{$_[0]->SUPER::class_to_style}, intron => [ 9e9, { color => '#555555' } ] }; }
-
 sub get_key {
   $_[1]->{'key'}{'exons/Introns'} = 1;
   $_[1]->{'key'}{'exons'} = 0;
@@ -320,11 +325,13 @@ sub get_key {
   return shift->SUPER::get_key($_[0], {
     exons           => {},
     'exons/Introns' => {
-      exon1  => { class => 'e1',     text => 'Translated sequence'          },
-      eu     => { class => 'eu',     text => 'UTR'                          },
-      intron => { class => 'intron', text => 'Intron or gene sequence' }
+      exon1           => { class => 'e1',     text => 'Translated sequence'  },
+      eu              => { class => 'eu',     text => 'UTR'                  },
+      intron          => { class => 'ei',     text => 'Intron'               },
+      exon0           => { class => 'e0',     text => 'Non-coding exon'      },
+      gene            => { class => 'eg',     text => 'Gene sequence'        },
     }
-  },$_[2]);
+  }, $_[2]);
 }
 
 1;

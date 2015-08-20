@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,7 +62,8 @@ sub content {
   $self->add_entry({
     type  => 'Core bp',
     label => $object->location_string,
-    link  => $object->get_location_url
+    link  => $object->get_location_url,
+    link_class => '_location_change'
   });
   
   unless ($object->bound_start == $object->seq_region_start && $object->bound_end == $object->seq_region_end) {

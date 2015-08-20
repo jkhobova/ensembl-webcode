@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@ sub initialize {
       my $markup = {};
          $seq    = [ map {{ letter => $_ }} split '', $slice->seq ];
       
-      if ($config->{'snp_display'}) {
+      if ($config->{'snp_display'} eq 'on') {
         $self->set_variations($config, { name => $config->{'species'}, slice => $slice }, $markup);
         $self->markup_variation($seq, $markup, $config);
       }
@@ -90,7 +90,7 @@ sub content {
   my $object = $self->object;
   
   ## first check we have uniquely determined variation
-  return $self->_info('A unique location can not be determined for this Variation', $object->not_unique_location) if $object->not_unique_location;
+  return $self->_info('A unique location can not be determined for this variant', $object->not_unique_location) if $object->not_unique_location;
   
   my ($sequence, $config, $raw_seq) = $self->initialize;
  

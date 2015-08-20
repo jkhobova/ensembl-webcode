@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,7 +100,7 @@ sub configure {
           ## Create a new "module" object. Stores info - but doesn't create connection yet
           $module->new(%arg, '-group' => $group) if $self->dynamic_use($module);
         }
-      } else {
+      } elsif ($type !~ /^DATABASE_(SESSION|ACCOUNTS)$/) {
         warn "unknown database type $type\n";
       }
     }

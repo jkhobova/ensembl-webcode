@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -136,7 +136,7 @@ sub form_fields {
                                               type   => 'DropDown', 
                                               select => 'select',
                                               name   => "group_${group}_display",
-                                              label  => "Display options for ".($self->hub->species_defs->TAXON_LABEL->{$group} || $group),
+                                              label  => "Display options for ".($self->hub->species_defs->TAXON_LABEL ? $self->hub->species_defs->TAXON_LABEL->{$group} || $group : $group),
                                               values => [ 
                                                           { value => 'default',  caption => 'Default behaviour' },
                                                           { value => 'hide',     caption => 'Hide genes' },

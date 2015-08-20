@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -199,7 +199,7 @@ sub get_export_data {
   $self->hub->{'_builder'}->create_objects('Family', 'lazy');
   my $family = $self->hub->core_object('family');
   if ($family) {
-    return $family->Obj->get_SimpleAlign;
+    return $family->Obj->get_SimpleAlign(-APPEND_SP_SHORT_NAME => 1);
   }
 }
 

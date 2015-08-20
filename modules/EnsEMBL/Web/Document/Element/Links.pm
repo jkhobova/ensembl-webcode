@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,6 +58,12 @@ sub init {
     rel  => 'icon',
     type => 'image/png',
     href => $species_defs->img_url . $species_defs->ENSEMBL_STYLE->{'SITE_ICON'}
+  });
+
+  $self->add_link({ 
+    rel  => 'apple-touch-icon',
+    type => 'image/png',
+    href => '/apple-touch-icon.png'
   });
   
   $self->add_link({

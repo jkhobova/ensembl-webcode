@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ package EnsEMBL::Web::Object::Transcript;
 
 use strict;
 
-use Bio::EnsEMBL::Utils::TranscriptAlleles qw(get_all_ConsequenceType);
 use Bio::EnsEMBL::Variation::Utils::Sequence qw(ambiguity_code variation_class);
 
 use EnsEMBL::Web::Cache;
@@ -57,6 +56,7 @@ sub availability {
       $availability->{'history_protein'} = 1 if $trans_id || $trans >= 1;
     } elsif( $obj->isa('Bio::EnsEMBL::PredictionTranscript') ) {
       $availability->{'either'} = 1;
+      $availability->{'translation'} = 1;
     } else {
       my $counts = $self->counts;
       my $rows   = $self->table_info($self->get_db, 'stable_id_event')->{'rows'};
@@ -66,6 +66,7 @@ sub availability {
       $availability->{'core'}            = $self->get_db eq 'core';
       $availability->{'either'}          = 1;
       $availability->{'transcript'}      = 1;
+      $availability->{'not_pred'}        = 1;
       $availability->{'domain'}          = 1;
       $availability->{'translation'}     = !!$obj->translation;
       $availability->{'strains'}         = !!$self->species_defs->databases->{'DATABASE_VARIATION'}->{'#STRAINS'} if $self->species_defs->databases->{'DATABASE_VARIATION'};
@@ -492,6 +493,13 @@ sub get_frameshift_introns {
   return $frameshift_introns;
 }
 
+sub get_trans_spliced_transcript_info {
+    my $self = shift;
+    my $trans_spliced_transcript_info = $self->Obj->get_all_Attributes('trans_spliced');
+
+    return $trans_spliced_transcript_info->[0];
+}
+
 sub get_domain_genes {
   my $self = shift;
   my $a = $self->gene ? $self->gene->adaptor : $self->Obj->adaptor;
@@ -657,8 +665,9 @@ sub getAllelesConsequencesOnSlice {
   my $valids = $self->valids;  
 
   # Get all features on slice
-  my $allele_features = $sample_slice->get_all_AlleleFeatures_Slice(1) || []; 
-  return ([], []) unless @$allele_features;
+  ## Don't assume that a sample ID taken from CGI input is actually present in this species!
+  my $allele_features = eval {$sample_slice->get_all_AlleleFeatures_Slice(1) || []}; 
+  return ([], []) if $@ || !@$allele_features;
 
   my @filtered_af =
     sort { $a->[2]->start <=> $b->[2]->start }
@@ -745,18 +754,18 @@ sub get_samples {
     return ();
   }
 
-  my $individual_adaptor = $vari_adaptor->get_IndividualAdaptor;
+  my $sample_adaptor = $vari_adaptor->get_SampleAdaptor;
  
   if ($options eq 'default') {
-    return sort @{$individual_adaptor->get_default_strains};
+    return sort @{$sample_adaptor->get_default_strains};
   }
 
   my %default_pops; 
-  map { $default_pops{$_} = 1 } @{$individual_adaptor->get_default_strains};
+  map { $default_pops{$_} = 1 } @{$sample_adaptor->get_default_strains};
  
   my %db_pops;
   
-  foreach (sort @{$individual_adaptor->get_display_strains}) {
+  foreach (sort @{$sample_adaptor->get_display_strains}) {
     next if $default_pops{$_}; 
     $db_pops{$_} = 1;
   }
@@ -833,14 +842,14 @@ sub munge_gaps_split {
 sub read_coverage {
   my ($self, $sample, $sample_slice) = @_;
   
-  my $individual_adaptor = $self->Obj->adaptor->db->get_db_adaptor('variation')->get_IndividualAdaptor;
-  my $sample_objs = $individual_adaptor->fetch_all_by_name($sample);
+  my $sample_adaptor = $self->Obj->adaptor->db->get_db_adaptor('variation')->get_SampleAdaptor;
+  my $sample_objs = $sample_adaptor->fetch_all_by_name($sample);
   return ([], []) unless @$sample_objs;
   my $sample_obj = $sample_objs->[0];
   
   my $rc_adaptor = $self->Obj->adaptor->db->get_db_adaptor('variation')->get_ReadCoverageAdaptor;
   my $coverage_level = $rc_adaptor->get_coverage_levels;
-  my $coverage_obj = $rc_adaptor->fetch_all_by_Slice_Individual_depth($sample_slice, $sample_obj);
+  my $coverage_obj = $rc_adaptor->fetch_all_by_Slice_Sample_depth($sample_slice, $sample_obj);
   return ($coverage_level, $coverage_obj);
 }
 

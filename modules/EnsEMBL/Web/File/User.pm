@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +20,9 @@ package EnsEMBL::Web::File::User;
 
 use strict;
 
+use EnsEMBL::Web::IOWrapper;
+use Archive::Tar;
+
 use parent qw(EnsEMBL::Web::File);
 
 ### Replacement for EnsEMBL::Web::TmpFile::Text, specifically for
@@ -32,9 +35,7 @@ sub new {
 ### @constructor
   my ($class, %args) = @_;
 
-  $args{'drivers'}  = ['IO']; ## Always write to disk
-  $args{'base_dir'} =  $args{'hub'}->species_defs->ENSEMBL_TMP_DIR; 
-  $args{'url_root'} = ''; 
+  $args{'output_drivers'} = ['IO']; ## Always write to disk
   return $class->SUPER::new(%args);
 }
 
@@ -89,5 +90,207 @@ sub write_line {
   return $result;
 }
 
+sub upload {
+### Upload data from a form and save it to a file
+  my ($self, %args) = @_;
+  my $hub       = $self->hub;
+
+  ## Always get from absolute input path
+  $self->{'absolute'} = 1;
+
+  my ($method)  = $args{'method'} || grep $hub->param($_), qw(file url text);
+  my $type      = $args{'type'};
+
+  my @orig_path = split '/', $hub->param($method);
+  my $filename  = $orig_path[-1];
+  my $name      = $hub->param('name');
+  my $f_param   = $hub->param('format');
+  my ($error, $format, $full_ext);
+
+  ## Need the filename (for handling zipped files)
+  unless ($name) {
+    if ($method eq 'text') {
+      $args{'name'} = 'Data';
+    } else {
+      my @orig_path = split('/', $hub->param($method));
+      $args{'name'} = $orig_path[-1];
+    }
+  }
+
+  ## Some uploads shouldn't be viewable as tracks, e.g. assembly converter input
+  my $no_attach = $type eq 'no_attach' ? 1 : 0;
+
+  ## Has the user specified a format?
+  $format = $f_param || $args{'format'};
+
+  ## Get the compression algorithm, based on the file extension
+  ## and, if necessary, try to guess the format from the extension
+  if ($method ne 'text') {
+    my @parts = split('\.', $filename);
+    my $last  = $parts[-1];
+    my $extension;
+    if ($last =~ /(gz|zip|bz)/i) {
+      $args{'compression'}  = lc $1;
+      $extension            = $parts[-2];
+      ## Save files in uncompressed form
+      $args{'uncompress'} = 1;
+    }
+    else {
+      $extension = $last;
+    }
+    $args{'extension'} = $extension;
+
+    ## This block is unlikely to be called, as the interface _should_ pass a format
+    if (!$format) {
+      my $format_info = $hub->species_defs->multi_val('DATA_FORMAT_INFO');
+
+      foreach (@{$hub->species_defs->multi_val('UPLOAD_FILE_FORMATS')}) {
+        $format = uc $extension if $format_info->{lc($_)}{'ext'} =~ /$extension/i;
+      }
+    }
+  }
+
+  $args{'format'}         = $format; 
+  $args{'timestamp_name'} = 1;
+
+  if ($method eq 'url') {
+    $args{'file'}          = $hub->param($method);
+    $args{'upload'}        = 'url';
+  }
+  elsif ($method eq 'text') {
+    ## Get content straight from CGI, since there's no input file
+    my $text = $hub->param('text');
+    if ($type eq 'coords') {
+      $text =~ s/\s/\n/g;
+    }
+    $args{'content'} = $text;
+  }
+  else {
+    $args{'file'}   = $hub->input->tmpFileName($hub->param($method));
+    $args{'upload'} = 'cgi';
+  }
+
+  ## Now we know where the data is coming from, initialise the object and read the data
+  $self->init(%args);
+  my $result = $self->read;
+
+  ## Add upload to session
+  if ($result->{'error'}) {
+    $error = $result->{'error'}[0];
+  }
+  else {
+    my $response = $self->write($result->{'content'});
+
+    if ($response->{'success'}) {
+
+      ## Now validate it using the appropriate parser - 
+      ## note that we have to do this after upload, otherwise we can't validate pasted data
+      my $iow = EnsEMBL::Web::IOWrapper::open($self, 'hub' => $hub);
+      $error = $iow->validate;
+
+      if ($error) {
+        ## If something went wrong, delete the upload
+        my $deletion = $self->delete;
+        warn '!!! ERROR DELETING UPLOAD: '.$deletion->{'error'}[0] if $deletion->{'error'};
+      }
+      else {
+        my $session = $hub->session;
+        my $md5     = $self->md5($result->{'content'});
+        my $code    = join '_', $md5, $session->session_id;
+        my $format  = $hub->param('format');
+        $format     = 'BED' if $format =~ /bedgraph/i;
+        my %inputs  = map $_->[1] ? @$_ : (), map [ $_, $hub->param($_) ], qw(filetype ftype style assembly nonpositional assembly);
+
+        $inputs{'format'}    = $format if $format;
+        my $species = $hub->param('species') || $hub->species;
+
+        ## Attach data species to session
+        ## N.B. Use 'write' locations, since uploads are read from the
+        ## system's CGI directory
+        my $data = $session->add_data(
+                                    type      => 'upload',
+                                    file      => $self->write_location,
+                                    filesize  => length($result->{'content'}),
+                                    code      => $code,
+                                    md5       => $md5,
+                                    name      => $args{'name'},
+                                    species   => $species,
+                                    format    => $format,
+                                    no_attach => $no_attach,
+                                    timestamp => time,
+                                    assembly  => $hub->species_defs->get_config($species, 'ASSEMBLY_VERSION'),
+                                    %inputs
+                                    );
+
+        $session->configure_user_data('upload', $data);
+        ## Store the session code so we can access it later
+        $self->{'code'} = $code;
+      }
+    }
+    else {
+      $error = $response->{'error'}[0];
+    }
+  }
+  return $error;
+}
+
+sub write_tarball {
+### Write an array of file contents to disk as a tarball
+### N.B. Unlike other methods, this does not use the drivers
+### TODO - this method has not been tested!
+### @param content ArrayRef
+### @param use_short_names Boolean
+### @return HashRef
+  my ($self, $content, $use_short_names) = @_;
+  my $result = {};
+
+  my $tar = Archive::Tar->new;
+  foreach (@$content) {
+    $tar->add_data(
+      ($use_short_names ? $_->{'shortname'} : $_->{'filename'}), 
+      $_->{'content'},
+    );
+  }
+
+  my %compression_flags = (
+                          'gz' => 'COMPRESS_GZIP',
+                          'bz' => 'COMPRESS_BZIP',
+                          );
+
+
+  $tar->write($self->file_name, $compression_flags{$self->compression}, $self->base_path);
+
+  return $result;
+}
+
+sub build_tracks_from_file {
+### Parse a file and convert data into drawable objects
+  my $self = shift;
+  my $tracks = {};
+
+  my $class = 'EnsEMBL::Web::IOWrapper::'.uc($self->format);
+  if (EnsEMBL::Root::dynamic_use($class)) {
+    my $wrapper = $class->new($self);
+    my $parser = $wrapper->parser;
+    while ($parser->next) {
+      my $key = $parser->get_metadata_value('name') || 'default';
+      if ($parser->is_metadata) {
+        $tracks->{$key}{'config'}{'description'} = $parser->get_metadata_value('description') unless $tracks->{$key}{'config'}{'description'};
+      }
+      else {
+        my $feature_array = $tracks->{$key}{'features'} || [];
+
+        ## Create feature
+        my $feature = $wrapper->get_hash;
+        next unless keys %$feature;
+
+        ## Add to track hash
+        push @$feature_array, $feature;
+        $tracks->{$key}{'features'} = $feature_array unless $tracks->{$key}{'features'};
+      }
+    }
+  }
+  return $tracks;
+}
 1;
 

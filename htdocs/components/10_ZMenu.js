@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,10 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
 
     var area = data.area.a;
     var params, n;
+
+    if (data.area.link) {
+      area = { klass:{}, attrs: { href: data.area.link.attr('href'), title: data.area.link.attr('title') } };
+    }
     
     this.drag       = area.klass.drag ? 'drag' : area.klass.vdrag ? 'vdrag' : false;
     this.align      = area.klass.align; // TODO: implement alignslice menus
@@ -31,10 +35,11 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
     this.event      = data.event;
     this.coords     = data.coords || {};
     this.imageId    = data.imageId;
+    this.onclose    = data.onclose; // to be triggered when the zmenu is closed
+    this.context    = data.context; // context to call the 'onclose' on (defaults to the zmenu panel itself)
     this.relatedEl  = data.relatedEl;
     this.areaCoords = $.extend({}, data.area);
     this.location   = 0;
-    this.helptips   = false;
     
     if (area.klass.das) {
       this.das       = area.klass.group ? 'group' : area.klass.pseudogroup ? 'pseudogroup' : 'feature';
@@ -81,7 +86,12 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
     
     this.el.on('mousedown', function () {
       Ensembl.EventManager.trigger('panelToFront', panel.id);
-    }).on('click', 'a.location_change', function () {
+    }).on('click', 'a._location_change', function () {
+
+      if (!window.location.pathname.match(/\/Location\/View(\/|$)/)) {
+        return true;
+      }
+
       var locationMatch = this.href.match(Ensembl.locationMatch);
       
       if (locationMatch) {
@@ -93,10 +103,19 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
         
         return false;
       }
+    }).on('click', 'a._location_highlight', function () {
+      Ensembl.highlightLocation(this.href);
+
+      panel.hide();
+
+      return false;
     });
     
     $('.close', this.el).on('click', function () { 
       panel.hide();
+      if (panel.onclose) {
+        panel.onclose.call(panel.context || panel);
+      }
     });
     
     // The location parameter that is due to be changed has its value replaced with %s
@@ -163,7 +182,7 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
     var menu    = this.title.split('; ');
     var caption = menu.shift();
     
-    this.buildMenu(menu, caption, link, extra);
+    this.buildMenu(menu, caption, link, extra, true);
   },
   
   populateDas: function () {
@@ -262,10 +281,25 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
     if (length > 1) {
       this.elLk.header = $('<div class="header">' + (json.header ? json.header : length + ' features') + '</div>').insertBefore(this.elLk.container.addClass('row' + (length > cols ? ' grid' : '')));
     }
-    
+
+    this.addLocationHighlightLinks();
+
     this.show();
   },
-  
+
+  addLocationHighlightLinks: function () {
+    var links = this.elLk.container.find('._location_highlight').removeClass('_location_highlight');
+    if (!this.imageId.match('Multi')) {
+      links.each(function () {
+        var locationMatch = this.href.match(Ensembl.locationMatch);
+        if (locationMatch) {
+          $('<br /><a class="loc-highlight _location_highlight _ht" title="Highlight feature on image" href="' + Ensembl.updateURL({hlr: locationMatch[1]}, this.href) +'"></a>').insertAfter(this);
+        }
+        return true;
+      });
+    }
+  },
+
   populateNoAjax: function (force) {
     if (this.das && force !== true) {
       this.populated = true;
@@ -282,8 +316,8 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
       
       this.location = parseInt(r[1], 10) + (r[2] - r[1]) / 2;
       
-      extra += this.row(' ', '<a class="location_change" href="' + this.zoomURL(1) + '">Centre on feature</a>');
-      extra += this.row(' ', '<a class="location_change" href="' + this.baseURL.replace(/%s/, loc[1]) + '">Zoom to feature</a>');
+      extra += this.row(' ', '<a class="_location_change" href="' + this.zoomURL(1) + '">Centre on feature</a>');
+      extra += this.row(' ', '<a class="_location_change" href="' + this.baseURL.replace(/%s/, loc[1]) + '">Zoom to feature</a>');
     }
     
     this.populate(true, extra);
@@ -302,7 +336,7 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
     function notLocation() {
       var view = end - start + 1 > Ensembl.maxRegionLength ? 'Overview' : 'View';
           url  = url.replace(/.+\?/, '?');
-          menu = [ '<a href="' + panel.speciesPath + '/Location/' + view + url + '">Jump to location ' + view.toLowerCase() + '</a>' ];
+          menu = [ '<a href="' + panel.speciesPath + '/Location/' + view + url + '">Jump to region ' + view.toLowerCase() + '</a>' ];
       
       if (!window.location.pathname.match('/Chromosome')) {
         menu.push('<a href="' + panel.speciesPath + '/Location/Chromosome' + url + '">Chromosome summary</a>');
@@ -367,7 +401,7 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
         } else if (this.multi !== false) {
           multi();
         } else {
-          cls = 'location_change';
+          cls = '_location_change';
           
           if (end - start + 1 > Ensembl.maxRegionLength) {
             if (url.match('/View')) {
@@ -379,6 +413,11 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
           menu = [ '<a class="' + cls + '" href="' + url + '">Jump to region (' + (end - start + 1) + ' bp)</a>' ];
         }
       }
+
+      if (this.multi === false) {
+        menu.unshift('<a class="_location_highlight loc-highlight-a" href="' + Ensembl.updateURL({hlr: this.chr + ':' + start + '-' + end}, window.location.href) + '"><span></span>Highlight region (' + (end - start + 1) + ' bp)</a>');
+      }
+
     } else { // Point select
       this.location = Math.floor(min + (this.coords.x - this.areaCoords.l) * scale);
       
@@ -395,10 +434,10 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
           multi();
         } else {
           menu = [
-            '<a class="location_change" href="' + this.zoomURL(10) + '">Zoom out x10</a>',
-            '<a class="location_change" href="' + this.zoomURL(5)  + '">Zoom out x5</a>',
-            '<a class="location_change" href="' + this.zoomURL(2)  + '">Zoom out x2</a>',
-            '<a class="location_change" href="' + url + '">Centre here</a>'
+            '<a class="_location_change" href="' + this.zoomURL(10) + '">Zoom out x10</a>',
+            '<a class="_location_change" href="' + this.zoomURL(5)  + '">Zoom out x5</a>',
+            '<a class="_location_change" href="' + this.zoomURL(2)  + '">Zoom out x2</a>',
+            '<a class="_location_change" href="' + url + '">Centre here</a>'
           ];
           
           // Only add zoom in links if there is space to zoom in to.
@@ -406,7 +445,7 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
             var href = panel.zoomURL(1 / this);
             
             if (href !== '') {
-              menu.push('<a class="location_change" href="' + href + '">Zoom in x' + this + '</a>');
+              menu.push('<a class="_location_change" href="' + href + '">Zoom in x' + this + '</a>');
             }
           });
         }
@@ -454,7 +493,7 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
     }
     
     url  = this.baseURL.replace(/.+\?/, '?').replace(/%s/, this.chr + ':' + start + '-' + end);
-    menu = [ '<a href="' + this.speciesPath + '/Location/' + view + url + '">Jump to location ' + view.toLowerCase() + '</a>' ];
+    menu = [ '<a href="' + this.speciesPath + '/Location/' + view + url + '">Jump to region ' + view.toLowerCase() + '</a>' ];
     
     if (!window.location.pathname.match('/Chromosome')) {
       menu.push('<a href="' + this.speciesPath + '/Location/Chromosome' + url + '">Chromosome summary</a>');
@@ -463,7 +502,7 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
     this.buildMenu(menu, caption);
   },
   
-  buildMenu: function (content, caption, link, extra) {
+  buildMenu: function (content, caption, link, extra, decodeHTML) {
     var body = [];
     var i    = content.length;
     var menu, title, parse, j, row;
@@ -496,8 +535,9 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
           body.push('<tr>' + row + '</tr>');
         }
       } else {
-        menu = content[i].split(': ');  
-        body.unshift(this.row.apply(this, menu.length > 1 ? [ menu.shift(), menu.join(': ') ] : [ content[i] ]));
+        var kv = decodeHTML ? $('<span/>').html(content[i]).text() : content[i]; // Unescape HTML if needed
+        menu = kv.split(': ');  
+        body.unshift(this.row.apply(this, menu.length > 1 ? [ menu.shift(), menu.join(': ') ] : [ kv ]));
       }
     }
     
@@ -554,9 +594,12 @@ Ensembl.Panel.ZMenu = Ensembl.Panel.extend({
       this.relatedEl.addClass('highlight');
     }
 
-    if (!this.helptips && this.elLk.container.html()) {
-      this.elLk.container.find('._ht').helptip();
-      this.helptips = true;
+    // enable helptips
+    this.elLk.container.find('._ht').helptip();
+
+    // Hover ZMenus can be closed before they load!
+    if(this.el.hasClass('closed')) {
+      this.hide();
     }
   },
   

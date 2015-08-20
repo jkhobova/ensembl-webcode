@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -68,7 +68,7 @@ sub feature_content {
   my $chr           = $feature->seq_region_name;
   my $name          = $feature->variation_name;
   my $dbID          = $feature->dbID;
-  my $source        = $feature->source;
+  my $source        = $feature->source_name;
   my $bp            = "$chr:$chr_start";
   my $types         = $hub->species_defs->colour('variation');
   my $type          = $consequence && !($snp_fake || $var_box) ? $consequence : $feature->display_consequence;
@@ -110,8 +110,9 @@ sub feature_content {
 
 
 
-  my $color = $var_styles->{$type} ? $colourmap->hex_by_name($var_styles->{$type}->{'default'}) : $colourmap->hex_by_name($var_styles->{'default'}->{'default'});
-  my $consequence_label = $types->{$type}{'text'};
+my $type_key = lc($type);
+  my $color = $var_styles->{$type_key} ? $colourmap->hex_by_name($var_styles->{$type_key}->{'default'}) : $colourmap->hex_by_name($var_styles->{'default'}->{'default'});
+  my $consequence_label = $types->{$type_key}{'text'};
 
   if ($feature->most_severe_OverlapConsequence->SO_term eq $type) {
     my $cons_desc = $feature->most_severe_OverlapConsequence->description;
@@ -120,7 +121,7 @@ sub feature_content {
          '<span class="_ht conhelp coltab_text" title="%s">%s</span></nobr>',
          $color,
          $cons_desc,
-         $types->{$type}{'text'}
+         $types->{$type_key}{'text'}
     );
   }
 

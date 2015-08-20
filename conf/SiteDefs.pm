@@ -19,9 +19,9 @@ use Text::Wrap;
 
 $Text::Wrap::columns = 75;
 
-our $ENSEMBL_VERSION           = 78;
-our $ARCHIVE_VERSION           = 'Dec2014';    # Change this to the archive site for this version
-our $ENSEMBL_RELEASE_DATE      = 'December 2014';
+our $ENSEMBL_VERSION           = 81;
+our $ARCHIVE_VERSION           = 'Jul2015';    # Change this to the archive site for this version
+our $ENSEMBL_RELEASE_DATE      = 'July 2015';
 
 #### START OF VARIABLE DEFINITION #### DO NOT REMOVE OR CHANGE THIS COMMENT ####
 
@@ -38,11 +38,99 @@ my ($volume, $dir) = File::Spec->splitpath(__FILE__);
 
 our $ENSEMBL_SERVERROOT = File::Spec->catpath($volume, [split '/ensembl-webcode', $dir]->[0]) || '.';
 our $ENSEMBL_WEBROOT    = "$ENSEMBL_SERVERROOT/ensembl-webcode";
+our $ENSEMBL_DOCROOT    = "$ENSEMBL_WEBROOT/htdocs";
+our $ENSEMBL_PLUGINS_ROOTS = $ENV{'ENSEMBL_PLUGINS_ROOTS'}||"*-plugins";
+our @ENSEMBL_PLUGINS_PATHS = (
+  $ENSEMBL_WEBROOT,
+  "$ENSEMBL_SERVERROOT/$ENSEMBL_PLUGINS_ROOTS/".getpwuid($>),
+);
 our $ENSEMBL_PLUGINS;
 
 ## Define Plugin directories
-eval qq(require '$ENSEMBL_WEBROOT/conf/Plugins.pm');
-error("Error requiring plugin file:\n$@") if $@;
+if(-e "$ENSEMBL_WEBROOT/conf/Plugins.pm") {
+  eval qq(require '$ENSEMBL_WEBROOT/conf/Plugins.pm');
+  error("Error requiring plugin file:\n$@") if $@;
+}
+
+## Load AutoIdentities files
+my @ENSEMBL_IDENTITY;
+my $IPATHS = join(" ",map {"$_/conf/AutoIdentities.pm"} @ENSEMBL_PLUGINS_PATHS);
+my $APATHS = join(" ",map {"$_/conf/AutoPlugins.pm"} @ENSEMBL_PLUGINS_PATHS);
+foreach my $f (glob $IPATHS) {
+  our $ENSEMBL_IDENTITIES = [];
+  next unless -e $f;
+  eval qq(require '$f');
+  if($@) {
+    warn "Error requiring autoidentities file '$f': $@\n";
+    next;
+  }
+  push @ENSEMBL_IDENTITY,@{$_->()} for @$ENSEMBL_IDENTITIES;
+}
+warn " Server has identities\n    ".join("\n    ",@ENSEMBL_IDENTITY)."\n";
+
+## Load AutoPlugin files
+our $ENSEMBL_PLUGINS_USED = {};
+our $ENSEMBL_IDS_USED = {};
+
+sub paired { map {[$_[$_*2],$_[$_*2+1]]} 0..int(@_/2)-1 }
+my @PLUGINS_SEEN = map { $_->[0] } paired @$ENSEMBL_PLUGINS;
+$ENSEMBL_IDS_USED->{'- direct -'} = 0;
+$ENSEMBL_PLUGINS_USED->{$_} = [0] for @PLUGINS_SEEN;
+my $code = 1;
+my (%ALIST,%APRIO,@AMAPS);
+foreach my $f (glob $APATHS) {
+  our $ENSEMBL_AUTOPLUGINS = {};
+  our $ENSEMBL_IDENTITY_MAP = {};
+  next unless -e $f;
+  eval qq(require '$f');
+  if($@) {
+    warn "Error requiring autoplugin file '$f': $@\n";
+    next;
+  }
+  push @AMAPS,$ENSEMBL_IDENTITY_MAP;
+  foreach my $k (keys %$ENSEMBL_AUTOPLUGINS) {
+    my $prio = 50;
+    my $orig_k = $k;
+    $prio = $1 if $k =~ s/^(\d+)!//;
+    $APRIO{$k} ||= $prio;
+    push @{$ALIST{$k}||=[]},@{$ENSEMBL_AUTOPLUGINS->{$orig_k}};
+  }
+}
+
+## Calculate mapped identities
+my $any_maps = 1;
+while($any_maps) {
+  $any_maps = 0;
+  foreach my $map (@AMAPS) {
+    foreach my $id (keys %$map) {
+      next if grep { $_ eq $id } @ENSEMBL_IDENTITY;
+      my $re = $map->{$id};
+      next unless grep { /$re/ } @ENSEMBL_IDENTITY;
+      warn " Server has mapped identity $id ($re)\n";
+      $any_maps = 1;
+      push @ENSEMBL_IDENTITY,$id;
+    }
+  }
+}
+
+## Process AutoPlugin files
+foreach my $k (sort { $APRIO{$a} <=> $APRIO{$b} } keys %ALIST) {
+  if(grep { $_ eq $k } @ENSEMBL_IDENTITY) {
+    warn " Loading $k\n";
+    my @to_add;
+    foreach my $p (paired @{$ALIST{$k}||[]}) {
+      unless($ENSEMBL_IDS_USED->{$k}) {
+        $ENSEMBL_IDS_USED->{$k} = $code++;
+      }
+      $ENSEMBL_PLUGINS_USED->{$p->[0]} ||= [];
+      push @{$ENSEMBL_PLUGINS_USED->{$p->[0]}},$ENSEMBL_IDS_USED->{$k};
+      next if grep { $p->[0] eq $_ } @PLUGINS_SEEN;
+      push @to_add,$p->[0],$p->[1];
+      push @PLUGINS_SEEN,$p->[0];
+    }
+    push @$ENSEMBL_PLUGINS,@to_add;
+  }
+}
 
 # Needed for parsing BAM files
 our ($UDC_CACHEDIR, $HTTP_PROXY);
@@ -70,7 +158,10 @@ our $ENSEMBL_SITETYPE          = 'Ensembl';
 our $ENSEMBL_USER              = getpwuid($>); # Auto-set web serveruser
 our $ENSEMBL_GROUP             = getgrgid($)); # Auto-set web server group
 our $ENSEMBL_IMAGE_WIDTH       = 800;
-our $ENSEMBL_JSCSS_TYPE        = 'minified';
+
+our $ENSEMBL_MINIFIED_FILES_PATH = '/minified'; # path for saving the minified files
+our $ENSEMBL_DEBUG_JS            = 0; # change these to 1 to prevent js minification
+our $ENSEMBL_DEBUG_CSS           = 0; # change these to 1 to prevent css minification
 
 our $ENSEMBL_EXTERNAL_SEARCHABLE = 0; # No external bots allowed by default
 
@@ -112,9 +203,11 @@ foreach (@$ENSEMBL_DEBUG_FLAG_NAMES) {
   no strict 'refs';
   
   my $variable_name = "SiteDefs::ENSEMBL_DEBUG_$_";
-    $$variable_name = 1 << ($i++);
+    $$variable_name = 1 << ($i++)
+    ;
     
-  $ENSEMBL_DEBUG_VERBOSE_ERRORS <<= 1;
+  $ENSEMBL_DEBUG_VERBOSE_ERRORS <<= 1
+  ;
   $ENSEMBL_DEBUG_VERBOSE_ERRORS  += 1;
 }
 
@@ -133,6 +226,7 @@ our $ENSEMBL_TMP_TMP        = '/tmp';
 our $ENSEMBL_TMP_URL        = '/tmp';
 our $ENSEMBL_TMP_URL_IMG    = '/img-tmp';
 our $ENSEMBL_TMP_URL_CACHE  = '/img-cache';
+our $TRACKHUB_TIMEOUT       = 60*60*24;
 
 our ($ENSEMBL_REGISTRY);
 
@@ -153,7 +247,7 @@ our %ENSEMBL_SETENV = (
 our @ENSEMBL_LIB_DIRS;
 our @ENSEMBL_CONF_DIRS    = ("$ENSEMBL_WEBROOT/conf");
 our @ENSEMBL_PERL_DIRS    = ("$ENSEMBL_WEBROOT/perl");
-our @ENSEMBL_HTDOCS_DIRS  = ("$ENSEMBL_WEBROOT/htdocs", "$ENSEMBL_SERVERROOT/biomart-perl/htdocs");
+our @ENSEMBL_HTDOCS_DIRS  = ($ENSEMBL_DOCROOT, "$ENSEMBL_SERVERROOT/biomart-perl/htdocs");
 
 our $APACHE_DIR           = "$ENSEMBL_SERVERROOT/apache2";
 our $APACHE_BIN           = "$APACHE_DIR/bin/httpd";
@@ -181,22 +275,15 @@ our $ENSEMBL_SECONDARY_SPECIES;
 our %__species_aliases;
 
 ###############################################################################
-## Web user database - used to store information about settings, e.g. DAS
-## contigview and cytoview options.
+## Cookies and cookie encryption
 ###############################################################################
 
-our $ENSEMBL_USERDB_TYPE      = 'mysql';
-our $ENSEMBL_USERDB_NAME      = 'ensembl_accounts';
-our $ENSEMBL_USERDB_USER      = 'mysqluser';
-our $ENSEMBL_USERDB_HOST      = 'localhost';
-our $ENSEMBL_USERDB_PORT      =  3305;
-our $ENSEMBL_USERDB_PASS      = '';
-                             
-our $ENSEMBL_USER_COOKIE      = 'ENSEMBL_WWW_USER';
-our $ENSEMBL_USER_ID          = 0;
-our $ENSEMBL_SESSION_COOKIE   = 'ENSEMBL_WWW_SESSION';
-our $ENSEMBL_COOKIEHOST       = '';
-                             
+our $ENSEMBL_USER_COOKIE        = 'ENSEMBL_WWW_USER';
+our $ENSEMBL_USER_COOKIEHOST    = '';
+our $ENSEMBL_SESSION_COOKIE     = 'ENSEMBL_WWW_SESSION';
+our $ENSEMBL_SESSION_COOKIEHOST = '';
+our $ENSEMBL_COOKIEHOST         = '';
+
 our $ENSEMBL_ENCRYPT_0        = 0x16a3b3; # Encryption keys for session
 our $ENSEMBL_ENCRYPT_1        = 'a9';     # Encryption keys for session
 our $ENSEMBL_ENCRYPT_2        = 'xX';     # Encryption keys for session
@@ -209,8 +296,10 @@ our $ENSEMBL_ENCRYPT_REFRESH  = 30;       # Refresh cookies with less than 30 da
 ###############################################################################
 
 our $ENSEMBL_CONFIG_FILENAME     = 'config.packed';
+our $ENSEMBL_HTTPD_CONFIG_FILE   = "$ENSEMBL_WEBROOT/conf/httpd.conf";
 our $ENSEMBL_CONFIG_BUILD        = 0; # Build config on server startup? Setting to 0 will try to recover from $ENSEMBL_CONFIG_FILENAME on startup
 our $ENSEMBL_LONGPROCESS_MINTIME = 10;
+our $APACHE_DEFINE               = undef; # command line arguments for httpd command
 
 ## ALLOWABLE DATA OBJECTS
 our $OBJECT_TO_SCRIPT = {
@@ -242,6 +331,8 @@ our $OBJECT_TO_SCRIPT = {
   UserConfig          => 'Modal',
   UserData            => 'Modal',
   Help                => 'Modal',  
+
+  CSS                 => 'CSS',
 };
 
 ## Set log directory and files
@@ -290,6 +381,10 @@ sub update_conf {
   
   while (my ($dir, $name) = splice @plugins, 0, 2) {
     my $plugin_conf = "${name}::SiteDefs";
+
+    if (!-d $dir) {
+      die "[ERROR] Plugin $name could not be loaded: $dir not found.\n";
+    }
     
     eval qq{ package $plugin_conf; use ConfigDeferrer qw(defer); }; # export 'defer' to the plugin SiteDefs
     eval qq{ require '$dir/conf/SiteDefs.pm' };                     # load the actual plugin SiteDefs
@@ -327,6 +422,7 @@ sub update_conf {
     $BIOPERL_DIR,
     "$ENSEMBL_SERVERROOT/biomart-perl/lib",
     "$ENSEMBL_SERVERROOT/ensembl-orm/modules",
+    "$ENSEMBL_SERVERROOT/ensembl-io/modules",
     "$ENSEMBL_SERVERROOT/ensembl-funcgen/modules",
     "$ENSEMBL_SERVERROOT/ensembl-variation/modules",
     "$ENSEMBL_SERVERROOT/ensembl-compara/modules",
@@ -441,7 +537,11 @@ sub memcached {
   $pars->{'flags'} = [ keys %flags ];
   
   $SiteDefs::ENSEMBL_MEMCACHED = $pars;
+
+  $SiteDefs::ENSEMBL_COHORT =
+    Sys::Hostname::Long::hostname_long().":".$ENSEMBL_SERVERROOT;
 }
+
 
 1;
 
@@ -493,7 +593,7 @@ Support enquiries: helpdesk@ensembl.org
                                                                                 
 =head1 LICENSE
                                                                                 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

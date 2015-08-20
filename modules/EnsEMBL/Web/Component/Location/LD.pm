@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ sub prediction_method {
   ### Description : Adds text information about the prediction method
 
   return ['Prediction method', 'LD values were calculated by a pairwise
-    estimation between SNPs genotyped in the same individuals and within a
+    estimation between SNPs genotyped in the same samples and within a
     100kb window. An established method was used to estimate the maximum
     likelihood of the proportion that each possible haplotype contributed to the
     double heterozygote.'

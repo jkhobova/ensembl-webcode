@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -77,6 +77,10 @@ use base qw(EnsEMBL::Draw::GlyphSet);
 
 use POSIX qw(ceil);
 use List::Util qw(max);
+
+# Would be better to caluclate this at the end, but we calculate (x,y)
+#   before all the data is in.
+my $MAX_WIDTH = 350;
 
 # USEFUL UTILITIES
 
@@ -374,9 +378,12 @@ sub init_legend { # begin (or reset)
   return unless $self->strand == -1;
 
   $self->{'box_width'} = 20;
-  $self->{'columns'} = ($c||2);
   my $im_width = $config->get_parameter('panel_width'); 
- 
+  if($c) {
+    $self->{'columns'} = $c;
+  } else {
+    $self->{'columns'} = int($im_width / $MAX_WIDTH);
+  }
   $self->{'font'} = { $self->get_font_details('legend', 1) };
 
   my @sizes = $self->get_text_width(0,'X','',%{$self->{'font'}});

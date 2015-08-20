@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -339,17 +339,14 @@ sub _summarise_core_tables {
 # * Assemblies...
 # This is a bit ugly, because there's no easy way to sort the assemblies via MySQL
   $t_aref = $dbh->selectall_arrayref(
-    'select version, attrib, rank from coord_system where version is not null' 
+    'select version, attrib from coord_system where version is not null order by rank' 
   );
   my (%default, %not_default);
   foreach my $row (@$t_aref) {
     my $version = $row->[0];
     my $attrib  = $row->[1];
-    my $rank    = $row->[2];
     if ($attrib =~ /default_version/) {
-      if ($rank == 1) {    
-        $self->db_tree->{'ASSEMBLY_VERSION'} = $version;
-      }
+      $self->db_tree->{'ASSEMBLY_VERSION'} ||= $version; # get top ranked default_version
       $default{$version}++;
     }
     else {
@@ -405,11 +402,13 @@ sub _summarise_variation_db {
   # get menu config from meta table if it exists
   my $v_conf_aref = $dbh->selectall_arrayref('select meta_value from meta where meta_key = "web_config" order by meta_id asc');
   foreach my $row(@$v_conf_aref) {
-    my ($type, $long_name, $key, $parent) = split /\#/, $row->[0];
-  
+    my @values = split(/\#/,$row->[0],-1);
+    my ($type,$long_name,$short_name,$key,$parent) = @values;
+
     push @{$self->db_details($db_name)->{'tables'}{'menu'}}, {
       type       => $type,
       long_name  => $long_name,
+      short_name => $short_name,
       key        => $key,
       parent     => $parent
     };
@@ -464,11 +463,11 @@ sub _summarise_variation_db {
      elsif ($type eq 'DEFAULT'){ push (@default, $name); }
      elsif ($type eq 'LD'){ push (@ld, $name); } 
    }
-   $self->db_details($db_name)->{'tables'}{'individual.reference_strain'} = $reference;
+   $self->db_details($db_name)->{'tables'}{'sample.reference_strain'} = $reference;
    $self->db_details($db_name)->{'REFERENCE_STRAIN'} = $reference; 
-   $self->db_details($db_name)->{'meta_info'}{'individual.default_strain'} = \@default;
+   $self->db_details($db_name)->{'meta_info'}{'sample.default_strain'} = \@default;
    $self->db_details($db_name)->{'DEFAULT_STRAINS'} = \@default;  
-   $self->db_details($db_name)->{'meta_info'}{'individual.display_strain'} = \@display;
+   $self->db_details($db_name)->{'meta_info'}{'sample.display_strain'} = \@display;
    $self->db_details($db_name)->{'DISPLAY_STRAINS'} = \@display; 
    $self->db_details($db_name)->{'LD_POPULATIONS'} = \@ld;
 #---------- Add in strains contained in read_coverage_collection table
@@ -585,17 +584,19 @@ sub _summarise_variation_db {
   $self->db_details($db_name)->{'tables'}{'variation_set'}{'descriptions'} = \%set_descriptions;
   
 #--------- Add in phenotype information
-  my $pf_aref = $dbh->selectall_arrayref(qq{
-    SELECT pf.type, GROUP_CONCAT(DISTINCT s.name), count(pf.phenotype_feature_id)
-    FROM phenotype_feature pf, source s
-    WHERE pf.source_id=s.source_id AND pf.is_significant=1 AND pf.type!='SupportingStructuralVariation'
-    GROUP BY pf.type
-  });
-  
-  for(@$pf_aref) {
-    $self->db_details($db_name)->{'tables'}{'phenotypes'}{'rows'} += $_->[2];
-    $self->db_details($db_name)->{'tables'}{'phenotypes'}{'types'}{$_->[0]}{'count'} = $_->[2];
-    $self->db_details($db_name)->{'tables'}{'phenotypes'}{'types'}{$_->[0]}{'sources'} = $_->[1];
+  if ($code !~ /variation_private/i) {
+    my $pf_aref = $dbh->selectall_arrayref(qq{
+      SELECT pf.type, GROUP_CONCAT(DISTINCT s.name), count(pf.phenotype_feature_id)
+      FROM phenotype_feature pf, source s
+      WHERE pf.source_id=s.source_id AND pf.is_significant=1 AND pf.type!='SupportingStructuralVariation'
+      GROUP BY pf.type
+    });
+
+    for(@$pf_aref) {
+      $self->db_details($db_name)->{'tables'}{'phenotypes'}{'rows'} += $_->[2];
+      $self->db_details($db_name)->{'tables'}{'phenotypes'}{'types'}{$_->[0]}{'count'} = $_->[2];
+      $self->db_details($db_name)->{'tables'}{'phenotypes'}{'types'}{$_->[0]}{'sources'} = $_->[1];
+    }
   }
 
 #--------- Add in somatic mutation information
@@ -827,7 +828,8 @@ sub _summarise_funcgen_db {
   foreach my $row (@$rs_aref ){
     my ($regbuild_name, $regbuild_string) = @$row; 
     $regbuild_name =~s/regbuild\.//;
-    my @key_info = split(/\./,$regbuild_name); 
+    $regbuild_name =~ /^(.*)\.(.*?)$/;
+    my @key_info = ($1,$2);
     my %data;  
     my @ids = split(/\,/,$regbuild_string);
     my $sth = $dbh->prepare(
@@ -917,6 +919,16 @@ sub _summarise_website_db {
     my $entry = eval($row->[0]);
     $self->db_tree->{'ENSEMBL_GLOSSARY'}{$entry->{'word'}} = $entry->{'meaning'}; 
   }
+
+  ## Get attrib text lookup
+  $t_aref = $dbh->selectall_arrayref(
+    'select data from help_record where type = "lookup" and status = "live"'
+  );
+  foreach my $row (@$t_aref) {
+    my $entry = eval($row->[0]);
+    $self->db_tree->{'TEXT_LOOKUP'}{$entry->{'word'}} = $entry->{'meaning'}; 
+  }
+
 
   $dbh->disconnect();
 }
@@ -1452,61 +1464,54 @@ sub _summarise_go_db {
 
 sub _summarise_dasregistry {
   my $self = shift;
-  
-  # Registry parsing is lazy so re-use the parser between species'
-  my $das_reg = $self->tree->{'DAS_REGISTRY_URL'} || ( warn "No DAS_REGISTRY_URL in config tree" && return );
-  
-  my @reg_sources = @{ $self->_parse_das_server($das_reg) };
-  # Fetch the sources for the current species
-  my %reg_logic = map { $_->logic_name => $_ } @reg_sources;
-  my %reg_url   = map { $_->full_url   => $_ } @reg_sources;
-  
-  # The ENSEMBL_INTERNAL_DAS_SOURCES section is a list of enabled DAS sources
-  # Then there is a section for each DAS source containing the config
-  $self->tree->{'ENSEMBL_INTERNAL_DAS_SOURCES'}     ||= {};
-  $self->das_tree->{'ENSEMBL_INTERNAL_DAS_CONFIGS'} ||= {};
-  while (my ($key, $val) 
-         = each %{ $self->tree->{'ENSEMBL_INTERNAL_DAS_SOURCES'} }) {
+
+  $self->tree->{'ENSEMBL_INTERNAL_DAS_SOURCES'}     ||= {}; # List of all enabled DAS sources acc to ini files
+  $self->das_tree->{'ENSEMBL_INTERNAL_DAS_CONFIGS'} ||= {}; # Section for each DAS source containing the config to be populated now
+
+  while (my ($key, $val) = each %{ $self->tree->{'ENSEMBL_INTERNAL_DAS_SOURCES'} }) {
 
     # Skip disabled sources
     $val || next;
+
     # Start with an empty config
     my $cfg = $self->tree->{$key};
-    if (!defined $cfg || !ref($cfg)) {
-      $cfg = {};
-    }
-    
-    $cfg->{'logic_name'}      = $key;
-    $cfg->{'category'}        = $val;
-    $cfg->{'homepage'}      ||= $cfg->{'authority'};
+       $cfg = {} unless defined $cfg && ref $cfg; 
 
-    # Make sure 'coords' is an array
-    if( $cfg->{'coords'} && !ref $cfg->{'coords'} ) {
-      $cfg->{'coords'} = [ $cfg->{'coords'} ];
-    }
-    
-    # Check if the source is registered
-    my $src = $reg_logic{$key};
+    $cfg->{'logic_name'}    = $key;
+    $cfg->{'category'}      = $val;
+    $cfg->{'homepage'}    ||= $cfg->{'authority'};
+    $cfg->{'coords'}        = [ $cfg->{'coords'} ] if $cfg->{'coords'} && !ref $cfg->{'coords'}; # Make sure 'coords' is an array
 
-    # Try the actual server URL if it's provided but the registry URI isn't
-    if (!$src && $cfg->{'url'} && $cfg->{'dsn'}) {
-      my $full_url = $cfg->{'url'} . '/' . $cfg->{'dsn'};
-      $src = $reg_url{$full_url};
-      # Try parsing from the server itself
-      if (!$src) {
+    if (!delete $cfg->{'no_parsing'}) {
+
+      my $src;
+
+      # Try the server URL if it's provided
+      if ($cfg->{'url'} && $cfg->{'dsn'}) {
+
+        my $full_url = $cfg->{'url'} . '/' . $cfg->{'dsn'};
+
         eval {
           my %server_url = map {$_->full_url => $_} @{ $self->_parse_das_server($full_url) };
           $src = $server_url{$full_url};
         };
-        if ($@) {
-          warn "DAS source $key might not work - not in registry and server is down";
-        }
-      }
-    }
 
-    # Doesn't have to be in the registry... unfortunately
-    # But if it is, fill in the blanks
-    if ($src) {
+        if ($@) {
+          warn "Skipping DAS source $key - unable to reach source at $full_url";
+          next;
+        }
+
+        if (!$src) {
+          warn "Skipping DAS source $key - unable to parse source at $full_url";
+          next;
+        }
+
+      } else {
+#        warn "Skipping DAS source $key - unable to find 'url' or 'dsn' property in the INI file";
+        next;
+      }
+
+      # fill in any extra info obtained from the das server (data from ini files takes precedence)
       $cfg->{'label'}       ||= $src->label;
       $cfg->{'description'} ||= $src->description;
       $cfg->{'maintainer'}  ||= $src->maintainer;
@@ -1515,16 +1520,7 @@ sub _summarise_dasregistry {
       $cfg->{'dsn'}         ||= $src->dsn;
       $cfg->{'coords'}      ||= [map { $_->to_string } @{ $src->coord_systems }];
     }
-    
-    if (!$cfg->{'url'}) {
-      warn "Skipping DAS source $key - unable to find 'url' property (tried looking in registry and INI)";
-      next;
-    }
-    if (!$cfg->{'dsn'}) {
-      warn "Skipping DAS source $key - unable to find 'dsn' property (tried looking in registry and INI)";
-      next;
-    }
-    
+
     # Add the final config hash to the das packed tree
     $self->das_tree->{'ENSEMBL_INTERNAL_DAS_CONFIGS'}{$key} = $cfg;
   }
@@ -1747,14 +1743,15 @@ sub _munge_file_formats {
     'gff'       => {'ext' => 'gff', 'label' => 'GFF',       'display' => 'feature'},
     'gtf'       => {'ext' => 'gtf', 'label' => 'GTF',       'display' => 'feature'},
     'psl'       => {'ext' => 'psl', 'label' => 'PSL',       'display' => 'feature'},
+    'vcf'       => {'ext' => 'vcf', 'label' => 'VCF',       'display' => 'graph'},
     'vep_input' => {'ext' => 'txt', 'label' => 'VEP',       'display' => 'feature'},
     'wig'       => {'ext' => 'wig', 'label' => 'WIG',       'display' => 'graph'},
-    'bam'       => {'ext' => 'bam', 'label' => 'BAM',       'display' => 'graph', 'indexed' => 1},
-    'bigwig'    => {'ext' => 'bw',  'label' => 'BigWig',    'display' => 'graph', 'indexed' => 1},
-    'bigbed'    => {'ext' => 'bb',  'label' => 'BigBed',    'display' => 'graph', 'indexed' => 1},
-    'datahub'   => {'ext' => 'txt', 'label' => 'TrackHub',  'display' => 'graph', 'indexed' => 1},
-    'vcf'       => {'ext' => 'vcf', 'label' => 'VCF',       'display' => 'graph'},
-    'vcfi'      => {'ext' => 'vcf', 'label' => 'VCF (indexed)', 'display' => 'graph', 'indexed' => 1},
+    ## Remote only - cannot be uploaded
+    'bam'       => {'ext' => 'bam', 'label' => 'BAM',       'display' => 'graph', 'remote' => 1},
+    'bigwig'    => {'ext' => 'bw',  'label' => 'BigWig',    'display' => 'graph', 'remote' => 1},
+    'bigbed'    => {'ext' => 'bb',  'label' => 'BigBed',    'display' => 'graph', 'remote' => 1},
+    'trackhub'  => {'ext' => 'txt', 'label' => 'TrackHub',  'display' => 'graph', 'remote' => 1},
+    ## Export only
     'fasta'     => {'ext' => 'fa',   'label' => 'FASTA'},
     'clustalw'  => {'ext' => 'aln',  'label' => 'CLUSTALW'},
     'msf'       => {'ext' => 'msf',  'label' => 'MSF'},
@@ -1770,6 +1767,9 @@ sub _munge_file_formats {
     'rtf'       => {'ext' => 'rtf',  'label' => 'RTF'},
     'stockholm' => {'ext' => 'stk',  'label' => 'Stockholm'},
     'emboss'    => {'ext' => 'txt',  'label' => 'EMBOSS'},
+    ## WashU formats
+    'pairwise'  => {'ext' => 'txt', 'label' => 'Pairwise interactions', 'display' => 'feature'},
+    'pairwise_tabix' => {'ext' => 'txt', 'label' => 'Pairwise interactions (indexed)', 'display' => 'feature', 'indexed' => 1},
   );
 
   ## Munge into something useful to this website
@@ -1779,7 +1779,7 @@ sub _munge_file_formats {
       delete $formats{$format};
       next;
     }
-    if ($details->{'indexed'}) {
+    if ($details->{'remote'}) {
       push @remote, $format;
     }
     elsif ($details->{'display'}) {

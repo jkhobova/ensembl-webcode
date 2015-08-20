@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,22 +29,25 @@ Ensembl.extend({
       window.name = 'ensembl_' + new Date().getTime() + '_' + Math.floor(Math.random() * 10000);
     }
     
-    this.browser         = {};
-    this.locationURL     = typeof window.history.pushState === 'function' ? 'search' : 'hash';
-    this.hashParamRegex  = '([#?;&])(__PARAM__=)[^;&]+((;&)?)';
-    this.locationMatch   = new RegExp(/[#?;&]r=([^;&]+)/);
-    this.locationReplace = new RegExp(this.hashParamRegex.replace('__PARAM__', 'r'));
-    this.width           = parseInt(this.cookie.get('ENSEMBL_WIDTH'), 10) || this.setWidth(undefined, 1);
-    this.dynamicWidth    = !!this.cookie.get('DYNAMIC_WIDTH');
-    this.hideHints       = {};
-    this.initialPanels   = $('.initial_panel');
-    this.minWidthEl      = $('#min_width_container');
-    this.maxRegionLength = parseInt($('#max_region_length').val() || 0, 10);
-    this.speciesPath     = $('#species_path').val()        || '';
-    this.speciesCommon   = $('#species_common_name').val() || '';
-    this.species         = this.speciesPath.split('/').pop();
-    this.images          = { total: imagePanels.length, last: imagePanels.last()[0] }; // Store image panel details for highlighting
-    
+    this.browser            = {};
+    this.locationURL        = typeof window.history.pushState === 'function' ? 'search' : 'hash';
+    this.hashParamRegex     = '([#?;&])(__PARAM__=)[^;&]+((;&)?)';
+    this.locationMatch      = new RegExp(/[#?;&]r=([^;&]+)/);
+    this.hightlightMatch    = new RegExp(/[#?;&]hlr=([^;&]+)/);
+    this.locationReplace    = new RegExp(this.hashParamRegex.replace('__PARAM__', 'r'));
+    this.width              = parseInt(this.cookie.get('ENSEMBL_WIDTH'), 10) || this.setWidth(undefined, 1);
+    this.dynamicWidth       = !!this.cookie.get('DYNAMIC_WIDTH');
+    this.hideHints          = {};
+    this.initialPanels      = $('.initial_panel');
+    this.minWidthEl         = $('#min_width_container');
+    this.maxRegionLength    = parseInt($('#max_region_length').val() || 0, 10);
+    this.speciesPath        = $('#species_path').val()        || '';
+    this.speciesCommon      = $('#species_common_name').val() || '';
+    this.species            = this.speciesPath.split('/').pop();
+    this.images             = { total: imagePanels.length, last: imagePanels.last()[0] }; // Store image panel details for highlighting
+    this.highlightedLoc     = this.getHighlightedLocation();
+    this.lastHighlightedLoc = false;
+
     for (var i in bodyClass) {
       if (bodyClass[i]) {
         this.browser[bodyClass[i]] = true;
@@ -191,9 +194,23 @@ Ensembl.extend({
       });
     }
   },
-  
+
+  changeCoreParam: function (param, value) {
+    var inp = $('#core_params input[name=' + param + ']');
+
+    if (!inp.length) {
+      inp = $('<input name=' + param + '>').appendTo($('#core_params'));
+    }
+
+    if (value === false) {
+      inp.remove();
+    } else {
+      inp.val(value);
+    }
+  },
+
   cleanURL: function (url) {
-    return unescape(url.replace(/&/g, ';').replace(/#.*$/g, '').replace(/([?;])time=[^;]+;?/g, '$1').replace(/[?;]$/g, ''));
+    return url.replace(/&/g, ';').replace(/#.*$/g, '').replace(/([?;])time=[^;]+;?/g, '$1').replace(/[?;]$/g, '');
   },
   
   // Remove the old time stamp from a URL and replace with a new one
@@ -229,6 +246,28 @@ Ensembl.extend({
       this.EventManager.trigger('hashChange', r);
     }
   },
+
+  getHighlightedLocation: function(url) {
+    var r = ((url || window.location.href).match(this.hightlightMatch) || ['']).pop().match(/(.+):(\d+)-(\d+)/);
+
+    return r ? [ r[0], r[1], parseInt(r[2]), parseInt(r[3]) ] : null;
+  },
+
+  highlightLocation: function (r) {
+
+    if (r && typeof r === 'string') { // r can be false to clear hightlighted area, or can be an object already
+      r = this.getHighlightedLocation(r);
+    }
+
+    if (r || r === false) {
+      this.updateURL({ hlr: r && r[0] });
+      this.changeCoreParam('hlr', r[0]);
+      this.setCoreParams();
+      this.lastHighlightedLoc = this.highlightedLoc || this.lastHighlightedLoc;
+      this.highlightedLoc     = r;
+      this.EventManager.trigger('highlightLocation', r);
+    }
+  },
   
   updateURL: function (params, inputURL) {
     var url = inputURL || window.location[this.locationURL];
@@ -252,7 +291,7 @@ Ensembl.extend({
       }
     }
     
-    url = url.replace(/([?;]);+/g, '$1');
+    url = url.replace(/([?;]);+/g, '$1').replace(/[?;&]$/, '');
     
     if (inputURL) {
       return url;
@@ -278,9 +317,17 @@ Ensembl.extend({
     if (paramOnly) {
       return r;
     }
-    
+
     var hash = r && this.locationURL === 'search' ? { r: r } : {};
-    
+
+    if (hash.r) {
+      $.each(['g', 'db', 'hlr'], function (i, param) {
+        if (Ensembl.coreParams[param]) {
+          hash[param] = Ensembl.coreParams[param];
+        }
+      });
+    }
+
     $.each(window.location.hash.replace('#', '').split(/[;&]/), function () {
       var param = this.split('=');
       
@@ -307,5 +354,7 @@ Ensembl.extend({
     return x1 + x2;
   }
 });
+
+Ensembl.Class = {}; // sub namespace for "Base" based classes to keep Ensembl in their namespace
 
 window.Ensembl = Ensembl; // Make Ensembl namespace available on window - needed for upload iframes because the minifier will compress the variable name Ensembl

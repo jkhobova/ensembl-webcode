@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,11 +23,10 @@ use strict;
 use RTF::Writer;
 
 use EnsEMBL::Web::Fake;
-use EnsEMBL::Web::TmpFile::Text;
 use EnsEMBL::Web::Utils::RandomString qw(random_string);
 use HTML::Entities        qw(encode_entities);
 
-use Sanger::Graphics::ColourMap;
+use EnsEMBL::Draw::Utils::ColourMap;
 
 use base qw(EnsEMBL::Web::Component::Shared);
 
@@ -224,7 +223,7 @@ sub set_variations {
   my $focus  = $name eq $config->{'species'} ? $config->{'focus_variant'} : undef;
   my $snps   = [];
   my $u_snps = {};
-  my ($adaptor, $include_failed);
+  my $adaptor;
   
   if ($focus_snp_only) {
     push @$snps, $focus_snp_only;
@@ -385,8 +384,6 @@ sub set_variations {
     
     $config->{'focus_position'} = [ $s..$e ] if $dbID eq $config->{'focus_variant'};
   }
-  
-  $adaptor->db->include_failed_variations($include_failed) if $adaptor && defined $include_failed;
 }
 
 sub set_exons {
@@ -518,11 +515,16 @@ sub markup_exons {
     exon1   => 'e1',
     exon2   => 'e2',
     eu      => 'eu',
+    intron  => 'ei',
     other   => 'eo',
     gene    => 'eg',
     compara => 'e2',
   };
-  
+
+  if ($config->{'exons_case'}) {
+    $class->{'exon1'} = 'el';
+  }
+ 
   foreach my $data (@$markup) {
     $seq = $sequence->[$i];
     
@@ -843,7 +845,7 @@ sub build_sequence {
     my %previous = ( tag => 'span', class => '', title => '', href => '' );
     my %new_line = ( tag => 'span', class => '', title => '', href => '' );
     my ($row, $pre, $post, $count, $i);
-    
+  
     foreach my $seq (@$lines) {
       my $style;
       
@@ -853,11 +855,13 @@ sub build_sequence {
       $current{'href'}  = $seq->{'href'}   ? qq(href="$seq->{'href'}")   : '';;
       $current{'tag'}   = $current{'href'} ? 'a class="sequence_info"'   : 'span';
       $current{'letter'} = $seq->{'new_letter'};
-      
+
       if ($seq->{'class'}) {
         $current{'class'} = $seq->{'class'};
         chomp $current{'class'};
-        
+        if ($seq->{'class'} =~ /\b(e\w)\b/) {
+        }
+
         if ($config->{'maintain_colour'} && $previous{'class'} =~ /\b(e\w)\b/ && $current{'class'} !~ /\b(e\w)\b/) {
           $current{'class'} .= " $1";
         }
@@ -1152,7 +1156,7 @@ sub build_sequence {
 
   my $key_html = '';
   unless($exclude_key) {
-    $key_html = qq(<div class="adornment-key"></div>);
+    $key_html = qq(<div class="_adornment_key adornment-key"></div>);
   }
 
   my $id = $self->id;
@@ -1241,15 +1245,17 @@ sub class_to_style {
       ef   => [ $i++, { 'color' => "#$styles->{'SEQ_EXONFLANK'}{'default'}" } ],
       eo   => [ $i++, { 'background-color' => "#$styles->{'SEQ_EXONOTHER'}{'default'}" } ],
       eg   => [ $i++, { 'color' => "#$styles->{'SEQ_EXONGENE'}{'default'}", 'font-weight' => 'bold' } ],
+      ei   => [ $i++, { 'color' => "#$styles->{'SEQ_INTRON'}{'default'}" } ],
       c0   => [ $i++, { 'background-color' => "#$styles->{'SEQ_CODONC0'}{'default'}" } ],
       c1   => [ $i++, { 'background-color' => "#$styles->{'SEQ_CODONC1'}{'default'}" } ],
       cu   => [ $i++, { 'background-color' => "#$styles->{'SEQ_CODONUTR'}{'default'}" } ],
       co   => [ $i++, { 'background-color' => "#$styles->{'SEQ_CODON'}{'default'}" } ],
       aa   => [ $i++, { 'color' => "#$styles->{'SEQ_AMINOACID'}{'default'}" } ],
       end  => [ $i++, { 'background-color' => "#$styles->{'SEQ_REGION_CHANGE'}{'default'}", 'color' => "#$styles->{'SEQ_REGION_CHANGE'}{'label'}" } ],
-      bold => [ $i++, { 'font-weight' => 'bold' } ]
+      bold => [ $i++, { 'font-weight' => 'bold' } ],
+      el   => [$i++, { 'color' => "#$styles->{'SEQ_EXON0'}{'default'}", 'text-transform' => 'lowercase' } ],
     );
-    
+
     foreach (keys %$var_styles) {
       my $style = { 'background-color' => $colourmap->hex_by_name($var_styles->{$_}{'default'}) };
       
@@ -1266,7 +1272,7 @@ sub class_to_style {
   return $self->{'class_to_style'};
 }
 
-my $cm = Sanger::Graphics::ColourMap->new();
+my $cm = EnsEMBL::Draw::Utils::ColourMap->new();
 
 sub col_to_hex {
   my ($col) = @_;
@@ -1327,7 +1333,13 @@ sub get_key {
       compara => { class => 'e2', text => "$exon_type exons"                                   }
     }
   );
-  
+ 
+  if ($config->{'exons_case'}) {
+    $key{'exons'}->{'exon0'}{'text'} = 'ALTERNATING EXONS';
+    $key{'exons'}->{'exon1'} = {'text' => 'alternating exons',
+                                'class' => 'el'};
+  }
+   
   %key = (%key, %$k) if $k;
  
  
@@ -1347,13 +1359,17 @@ sub get_key {
   }
   
   $key{'variations'}{$_} = $var_styles->{$_} for keys %$var_styles;
-  
+  $key{'variations'}{'failed'}{'title'} = "Suspect variants which failed our quality control checks";
+
+  my $example = ($hub->param('v')) ? ' (i.e. '.$hub->param('v').')' : '';
+
   if($config->{'focus_variant'}) {
-    $image_config->{'legend'}{'focus'} = {
-      class => 'focus',
-      label => 'red',
-      default => 'white',
-      text => 'Focus variant',
+    $image_config->{'legend'}{'variations'}{'focus'} = {
+      class     => 'focus',
+      label     => 'red',
+      default   => 'white',
+      text      => 'Focus variant',
+      title     => "The Focus variant corresponds to the current variant$example",
       extra_css => 'text-decoration: underline; font-weight: bold;',
     };
   }
@@ -1368,7 +1384,7 @@ sub get_key {
       }
     }
   }
- 
+
   foreach my $type (keys %{$config->{'key'}}) {
     if (ref $config->{'key'}{$type} eq 'HASH') {
       $image_config->{'legend'}{$type}{$_} = $key{$type}{$_} for grep $config->{'key'}{$type}{$_}, keys %{$config->{'key'}{$type}};
@@ -1380,8 +1396,8 @@ sub get_key {
   my @messages;
 
   my $key_list;
-     push @messages,"Displaying variations for $config->{'population_filter'} with a minimum frequency of $config->{'min_frequency'}"                if $config->{'population_filter'};
-     push @messages,'Variations are filtered by consequence type',                                                                                   if $config->{'consequence_filter'};
+     push @messages,"Displaying variants for $config->{'population_filter'} with a minimum frequency of $config->{'min_frequency'}"                if $config->{'population_filter'};
+     push @messages,'Variants are filtered by consequence type',                                                                                   if $config->{'consequence_filter'};
      push @messages,'Conserved regions are where >50&#37; of bases in alignments match'                                                              if $config->{'key'}{'conservation'};
      push @messages,'For secondary species we display the coordinates of the first and the last mapped (i.e A,T,G,C or N) basepairs of each line'    if $config->{'alignment_numbering'};
      push @messages,"<code>&middot;&nbsp;&nbsp;&nbsp;&nbsp;</code>Implicit match to reference sequence (no read coverage data available)",
@@ -1395,113 +1411,6 @@ sub get_key {
   $image_config->{'legend'}{'_messages'}= \@messages;
 
   return $image_config->{'legend'};
-}
-
-sub export_sequence {
-  my ($self, $sequence, $config, $block_mode) = @_;
-  my @colours        = (undef);
-  my $class_to_style = $self->class_to_style;
-  my $spacer         = $config->{'v_space'} ? ' ' x $config->{'display_width'} : '';
-  my $c              = 1;
-  my $i              = 0;
-  my $j              = 0;
-  my @output;
-  
-  foreach my $class (sort { $class_to_style->{$a}[0] <=> $class_to_style->{$b}[0] } keys %$class_to_style) {
-    my $rtf_style = {};
-    
-    $rtf_style->{'\cf'      . $c++} = substr $class_to_style->{$class}[1]{'color'}, 1            if $class_to_style->{$class}[1]{'color'};
-    $rtf_style->{'\chcbpat' . $c++} = substr $class_to_style->{$class}[1]{'background-color'}, 1 if $class_to_style->{$class}[1]{'background-color'};
-    $rtf_style->{'\b'}              = 1                                                          if $class_to_style->{$class}[1]{'font-weight'}     eq 'bold';
-    $rtf_style->{'\ul'}             = 1                                                          if $class_to_style->{$class}[1]{'text-decoration'} eq 'underline';
-    
-    $class_to_style->{$class}[1] = $rtf_style;
-    
-    push @colours, [ map hex, unpack 'A2A2A2', $rtf_style->{$_} ] for sort grep /\d/, keys %$rtf_style;
-  }
-  
-  foreach my $lines (@$sequence) {
-    my ($section, $class, $previous_class, $count);
-    
-    $lines->[-1]{'end'} = 1;
-    
-    foreach my $seq (@$lines) {
-      if ($seq->{'class'}) {
-        $class = $seq->{'class'};
-       
-        if ($config->{'maintain_colour'} && $previous_class =~ /\s*(e\w)\s*/ && $class !~ /\s*(e\w)\s*/) {
-          $class .= " $1";
-        }
-      } elsif ($config->{'maintain_colour'} && $previous_class =~ /\s*(e\w)\s*/) {
-        $class = $1;
-      } else {
-        $class = '';
-      }
-      
-      $class = join ' ', sort { $class_to_style->{$a}[0] <=> $class_to_style->{$b}[0] } split /\s+/, $class;
-      
-      $seq->{'letter'} =~ s/<a.+>(.+)<\/a>/$1/ if $seq->{'url'};
-      
-      if ($count == $config->{'display_width'} || $seq->{'end'} || defined $previous_class && $class ne $previous_class) {
-        my $style = join '', map keys %{$class_to_style->{$_}[1]}, split ' ', $previous_class;
-        
-        $section .= $seq->{'letter'} if $seq->{'end'};
-        
-        if (!scalar @{$output[$i][$j] || []} && $config->{'number'}) {
-          my $num  = shift @{$config->{'line_numbers'}{$i}};
-          my $pad1 = ' ' x ($config->{'padding'}{'pre_number'} - length $num->{'label'});
-          my $pad2 = ' ' x ($config->{'padding'}{'number'}     - length $num->{'start'});
-          
-          push @{$output[$i][$j]}, [ \'', $config->{'h_space'} . sprintf '%6s ', "$pad1$num->{'label'}$pad2$num->{'start'}" ];
-        }
-        
-        push @{$output[$i][$j]}, [ \$style, $section ];
-        
-        if ($count == $config->{'display_width'}) {
-          $count = 0;
-          $j++;
-        }
-        
-        $section = '';
-      }
-      
-      $section       .= $seq->{'letter'};
-      $previous_class = $class;
-      $count++;
-    }
-    
-    $i++;
-    $j = 0;
-  }
-  
-  my $string;
-  my $file = EnsEMBL::Web::TmpFile::Text->new(extension => 'rtf', prefix => '');
-  my $rtf  = RTF::Writer->new_to_string(\$string);
-  
-  $rtf->prolog(
-    fonts  => [ 'Courier New' ],
-    colors => \@colours,
-  );
-  
-  if ($block_mode) {
-    foreach my $block (@output) {
-      $rtf->paragraph(\'\fs20', $_)      for @$block;
-      $rtf->paragraph(\'\fs20', $spacer) if $spacer;
-    }
-  } else {  
-    for my $i (0..$#{$output[0]}) {
-      $rtf->paragraph(\'\fs20', $_->[$i]) for @output;
-      $rtf->paragraph(\'\fs20', $spacer)  if $spacer;
-    }
-  }
-  
-  $rtf->close;
-  
-  print $file $string;
-  
-  $file->save;
-  
-  return $file->content;
 }
 
 1;

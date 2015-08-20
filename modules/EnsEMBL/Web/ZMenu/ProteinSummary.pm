@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,14 +37,16 @@ sub content {
   $self->add_entry({
     type  => 'View record',
     label => $hit_name,
-    link  => $hub->get_ExtURL($hit_db, $hit_name)
+    link  => $hub->get_ExtURL($hit_db, $hit_name),
+    external => 1,
   });
   
   if ($interpro_ac) {
     $self->add_entry({
       type  => 'View InterPro',
       label => $interpro_ac,
-      link  => $hub->get_ExtURL('interpro', $interpro_ac)
+      link  => $hub->get_ExtURL('interpro', $interpro_ac),
+      external => 1,
     });
   }
   

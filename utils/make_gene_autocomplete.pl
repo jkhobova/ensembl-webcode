@@ -1,5 +1,5 @@
 #!/usr/local/bin/perl
-# Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+# Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ $dbh->do(
     species       varchar(255) DEFAULT NULL,
     stable_id     varchar(128) NOT NULL DEFAULT "",
     display_label varchar(128) DEFAULT NULL,
+    location      varchar(60)  DEFAULT NULL,
     db            varchar(32)  NOT NULL DEFAULT "core",
     KEY i  (species, display_label),
     KEY i2 (species, stable_id),
@@ -90,8 +91,9 @@ foreach my $dataset (@ARGV ? @ARGV : @$SiteDefs::ENSEMBL_DATASETS) {
     $sth = $adaptor->prepare(
       'SELECT ad.analysis_id, ad.web_data 
         FROM analysis_description ad, analysis a 
-        WHERE a.analysis_id = ad.analysis_id AND 
-              a.logic_name != "estgene"      AND 
+        WHERE a.analysis_id = ad.analysis_id      AND 
+              a.logic_name != "estgene"           AND 
+              a.logic_name NOT LIKE "%refseq%"    AND 
               ad.displayable = 1'
     );
     
@@ -111,8 +113,8 @@ foreach my $dataset (@ARGV ? @ARGV : @$SiteDefs::ENSEMBL_DATASETS) {
     next unless $ids;
     
     $sth = $adaptor->prepare(
-      "SELECT g.stable_id, xr.display_label, cs.species_id 
-        FROM gene g,  xref xr, seq_region sr, coord_system cs
+      "SELECT g.stable_id, xr.display_label, cs.species_id, sr.name, g.seq_region_start, g.seq_region_end
+        FROM gene g, xref xr, seq_region sr, coord_system cs
         WHERE g.display_xref_id  = xr.xref_id         AND
               g.seq_region_id    = sr.seq_region_id   AND
               sr.coord_system_id = cs.coord_system_id AND
@@ -121,7 +123,7 @@ foreach my $dataset (@ARGV ? @ARGV : @$SiteDefs::ENSEMBL_DATASETS) {
     
     $sth->execute;
     
-    push(@insert, sprintf(qq{('$species_hash{$_->[2]}', '$_->[0]', %s, '$db')}, $dbh->quote($_->[1]))) for sort { $a->[1] cmp $b->[1] } grep { $_->[0] ne $_->[1] } @{$sth->fetchall_arrayref};
+    push(@insert, sprintf("('$species_hash{$_->[2]}', '$_->[0]', %s, %s, '$db')", $dbh->quote($_->[1]), $dbh->quote("$_->[3]:$_->[4]-$_->[5]"))) for sort { $a->[1] cmp $b->[1] } grep { $_->[0] ne $_->[1] } @{$sth->fetchall_arrayref};
   }
   
   $dbh->do("DELETE FROM gene_autocomplete WHERE species IN ('$delete')") if $delete;
@@ -129,7 +131,7 @@ foreach my $dataset (@ARGV ? @ARGV : @$SiteDefs::ENSEMBL_DATASETS) {
   # insert in batches of 10,000
   while (@insert) {
     my $values = join(',', splice(@insert, 0, 10000));
-    $dbh->do("INSERT INTO gene_autocomplete (species, stable_id, display_label, db) VALUES $values");
+    $dbh->do("INSERT INTO gene_autocomplete (species, stable_id, display_label, location, db) VALUES $values");
   }  
 }
 

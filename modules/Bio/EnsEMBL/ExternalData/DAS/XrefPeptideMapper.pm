@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,6 +22,13 @@ limitations under the License.
 #     it uses 'external_id' and 'ensembl_id' strings
 #   names the from/to coordinate systems as 'external' and 'ensembl'.
 package Bio::EnsEMBL::ExternalData::DAS::XrefPeptideMapper;
+
+############################################################################
+#
+# DEPRECATED MODULE - DAS SUPPORT WILL BE REMOVED FROM ENSEMBL IN RELEASE 83
+#
+#############################################################################
+
 
 use strict;
 use warnings;

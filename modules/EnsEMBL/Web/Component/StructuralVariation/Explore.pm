@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,56 +29,45 @@ sub _init {
 }
 
 sub content {
-  my $self               = shift;
-  my $hub                = $self->hub;
-  my $object             = $self->object;
-  my $variation          = $object->Obj;
-  my $species            = $hub->species;
-
-  my $avail    = $self->object->availability;
+  my $self      = shift;
+  my $hub       = $self->hub;
+  my $object    = $self->object;
+  my $variation = $object->Obj;
+  my $species   = $hub->species;
+  my $avail     = $self->object->availability;
 
   my ($gt_url, $context_url, $pheno_url, $supp_url);
+  my ($gt_count, $supp_count, $pheno_count);
   $context_url = $hub->url({'action' => 'Context'});
+
   if ($avail->{'has_transcripts'}) {
-    $gt_url    = $hub->url({'action' => 'Mappings'});
+    $gt_url   = $hub->url({'action' => 'Mappings'});
+    $gt_count = $avail->{'has_transcripts'};
   }
-  if ($avail->{'has_transcripts'}) {
+
+  if ($avail->{'has_transcripts'} || $avail->{'has_phenotypes'}) {
     $pheno_url = $hub->url({'action' => 'Phenotype'});
+    $pheno_count = $avail->{'has_phenotypes'} if ($avail->{'has_phenotypes'});
   }
+
   if ($avail->{'has_supporting_structural_variation'}) {
-    $supp_url  = $hub->url({'action' => 'Evidence'});
+    $supp_url   = $hub->url({'action' => 'Evidence'});
+    $supp_count = $avail->{'has_supporting_structural_variation'};
   }
-  
+
+  my $supp_title = 'Sample level variant data used to define the structural variant';
 
   my @buttons = (
-    {'title' => 'Graphical neighbourhood region', 'img' => 'genomic_context',        'url' => $context_url},
-    {'title' => 'Consequences (e.g. missense)',   'img' => 'gene_transcript',        'url' => $gt_url},
-    {'title' => 'Sample level variant data used to define the structural variant', 
-                                                  'img' => 'supporting_evidence',    'url' => $supp_url},
-    {'title' => 'Diseases and traits',            'img' => 'phenotype_data',         'url' => $pheno_url},
+    {'title' => 'Graphical neighbourhood region', 'img' => '96/var_genomic_context.png',        'url' => $context_url                         },
+    {'title' => 'Consequences (e.g. missense)',   'img' => '96/var_gene_transcript.png',        'url' => $gt_url   ,  'count' => $gt_count    },
+    {'title' => $supp_title,                      'img' => '96/var_supporting_evidence.png',    'url' => $supp_url ,  'count' => $supp_count  },
+    {'title' => 'Diseases and traits',            'img' => '96/var_phenotype_data.png',         'url' => $pheno_url , 'count' => $pheno_count },
   );
 
-  my $html = '<div class="icon-holder">';
-
-  foreach my $button (@buttons) {
-    my $title = $button->{'title'};
-    my $img   = 'var_'.$button->{'img'};
-    my $url   = $button->{'url'};
-    if ($url) {
-      $html .= qq(<a href="$url"><img src="/i/96/${img}.png" class="portal _ht" alt="$title" title="$title" /></a>);
-    }
-    else {
-      $title .= ' (NOT AVAILABLE)';
-      $html  .= qq(<img src="/i/96/${img}_off.png" class="portal _ht" alt="$title" title="$title" />);
-    }
-  }
-
-  $html .= '</div>';
+  my $html = $self->button_portal(\@buttons);
 
   ## Structural variation documentation links
-  my $new_vep     = $hub->species_defs->ENSEMBL_VEP_ENABLED;
-  my $vep_link    = $hub->url({'species' => $species, '__clear' => 1, $new_vep ? qw(type Tools action VEP) : qw(type UserData action UploadVariations)});
-  my $link_class  = $new_vep ? '' : ' class="modal_link"';
+  my $vep_icon = $self->vep_icon;
   $html .= qq(
     <div class="column-wrapper">
       <div class="column-two column-first">
@@ -89,7 +78,7 @@ sub content {
             <li>Video: <a href="/Help/Movie?id=316">Demo: Structural variation for a region</a></li>
           </ul>
           <h2>Analysing your data</h2>
-          <p><a href="$vep_link"$link_class><img src="/i/vep_logo_sm.png" alt="[logo]" style="vertical-align:middle" /></a> Test your own structural variants with the <a href="$vep_link"$link_class>Variant Effect Predictor</a></p>
+          <div>$vep_icon</div>
         </div>
       </div>
       <div class="column-two column-next">

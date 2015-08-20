@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,6 +50,11 @@ sub get_sequence_data {
     
     $markup->{'exons'}->{0}->{'type'} = [ 'exon0' ];
   }
+
+  my $hub   = $self->hub;
+  my $type  = $hub->param('data_type') || $hub->type;
+  my $vc    = $self->view_config($type);
+  $config->{'exons_case'} = ($hub->param('exons_case') eq 'on' || $vc->get('exons_case') eq 'on') ? 1 : 0;
  
   if ($config->{'snp_display'}) {
     foreach my $snp (reverse @{$object->variation_data($translation->get_Slice, undef, $strand)}) {

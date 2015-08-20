@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,11 +35,22 @@ sub new {
   my ($class, %args) = @_;
   $args{'input_drivers'}  ||= [qw(Memcached IO)];
   $args{'output_drivers'} ||= [qw(Memcached IO)];
-  my $sd = $args{'hub'}->species_defs;
-  $args{'base_dir'} = $sd->ENSEMBL_TMP_DIR_IMG; 
-  $args{'base_url'} = $sd->ENSEMBL_STATIC_SERVER . $sd->ENSEMBL_TMP_URL_IMG;
+  $args{'base_dir'} = 'image'; 
   return $class->SUPER::new(%args);
 }
+
+sub read_url {
+  my $self = shift;
+  my $path = $self->SUPER::read_url(@_);
+  return $self->{'absolute'} ? $path : $self->hub->species_defs->ENSEMBL_STATIC_SERVER.$path;
+}
+
+sub write_url {
+  my $self = shift;
+  my $path = $self->SUPER::write_url(@_);
+  return $self->{'absolute'} ? $path : $self->hub->species_defs->ENSEMBL_STATIC_SERVER.$path;
+}
+
 
 1;
 

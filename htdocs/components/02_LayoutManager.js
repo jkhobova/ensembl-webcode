@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,12 +25,13 @@ Ensembl.LayoutManager.extend({
   initialize: function () {
     this.id = 'LayoutManager';
     
-    Ensembl.EventManager.register('reloadPage',    this, this.reloadPage);
-    Ensembl.EventManager.register('validateForms', this, this.validateForms);
-    Ensembl.EventManager.register('makeZMenu',     this, this.makeZMenu);
-    Ensembl.EventManager.register('hashChange',    this, this.hashChange);
-    Ensembl.EventManager.register('toggleContent', this, this.toggleContent);
-    Ensembl.EventManager.register('changeWidth',   this, this.changeWidth);
+    Ensembl.EventManager.register('reloadPage',         this, this.reloadPage);
+    Ensembl.EventManager.register('validateForms',      this, this.validateForms);
+    Ensembl.EventManager.register('makeZMenu',          this, this.makeZMenu);
+    Ensembl.EventManager.register('hashChange',         this, this.hashChange);
+    Ensembl.EventManager.register('highlightLocation',  this, this.updateHighlightParam);
+    Ensembl.EventManager.register('toggleContent',      this, this.toggleContent);
+    Ensembl.EventManager.register('changeWidth',        this, this.changeWidth);
         
     $('#page_nav .tool_buttons > p').show();
     
@@ -43,7 +44,9 @@ Ensembl.LayoutManager.extend({
       
       this.hashChange(Ensembl.urlFromHash(window.location.href, true));
     }
-    
+
+    $(document).find('#static').externalLinks();
+
     $(document).on('click', '.modal_link', function () {
       if (Ensembl.EventManager.trigger('modalOpen', this)) {
         return false;
@@ -144,6 +147,8 @@ Ensembl.LayoutManager.extend({
       'popstate.ensembl'  : $.proxy(this.popState, this)
     });
 
+    this.showMobileMessage();
+    this.showCookieMessage();
     this.handleMirrorRedirect();
   },
   
@@ -229,7 +234,15 @@ Ensembl.LayoutManager.extend({
     
     document.title = document.title.replace(/(Chromosome ).+/, '$1' + text);
   },
-  
+
+  updateHighlightParam: function (hlr) {
+    $('a:not(.constant):not(._location_highlight)').filter(function () { // only for the links that have r param
+      return this.hostname === window.location.hostname && !!this.href.match(Ensembl.locationMatch);
+    }).attr('href', function () {
+      return Ensembl.updateURL({hlr: hlr && hlr[0]}, this.href);
+    });
+  },
+
   toggleContent: function (rel, delay) {
     if (rel) {
       window.setTimeout(function() {
@@ -288,5 +301,29 @@ Ensembl.LayoutManager.extend({
         });
       }
     }
-  }
+  },
+
+  showCookieMessage: function() {
+    var cookiesAccepted = Ensembl.cookie.get('cookies_ok');
+
+    if (!cookiesAccepted) {
+      $(['<div class="cookie-message hidden">',
+        '<div></div>',
+        '<p>We use cookies to enhance the usability of our website. If you continue, we\'ll assume that you are happy to receive all cookies.</p>',
+        '<p><button>Don\'t show this again</button></p>',
+        '<p>Further details about our privacy and cookie policy can be found <a href="/info/about/legal/privacy.html">here</a>.</p>',
+        '</div>'
+      ].join(''))
+        .appendTo(document.body).show().find('button,div').on('click', function (e) {
+          Ensembl.cookie.set('cookies_ok', 'yes');
+          $(this).parents('div').first().fadeOut(200);
+      }).filter('div').helptip({content:"Don't show this again"});
+      return true;
+    }
+
+    return false;
+  },
+
+  showMobileMessage: function() { }
+
 });

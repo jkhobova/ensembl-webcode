@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ sub content {
   my $self = shift;
   my $current_species = $self->object->species_path($self->object->data_species); 
   
-  my $form = EnsEMBL::Web::Form->new('url_feedback', "$current_species/UserData/SaveExtraConfig", 'post');
+  my $form = $self->new_form({id => 'url_feedback', action => "$current_species/UserData/SaveExtraConfig", method => 'post'});
 
   ## This next bit is a hack - we need to implement userdata configuration properly!
   $form->add_element(

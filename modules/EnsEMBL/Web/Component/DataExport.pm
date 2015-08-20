@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +29,11 @@ use strict;
 
 use base qw(EnsEMBL::Web::Component);
 
+sub id {
+  my $id = shift->SUPER::id(@_);
+  return "DataExport_$id";
+}
+
 sub create_form {
 ### Builds the input form used by DataExport
 ### Note that the form consists of a generic section (file name, format)
@@ -45,11 +50,10 @@ sub create_form {
     'FASTA' => 'FASTA',
   };
 
-  my $form_url  = sprintf('/%s/DataExport/Output', $hub->species);
-  my $form      = $self->new_form({'id' => 'export', 'action' => $form_url, 'method' => 'post'});
+  my $form = $self->new_form({'id' => 'export', 'action' => $hub->url({'action' => 'Output',  'function' => '', '__clear' => 1}), 'method' => 'post'});
 
   ## Generic fields
-  my $fieldset  = $form->add_fieldset; 
+  my $fieldset = $form->add_fieldset;
 
   my $filename = $hub->param('filename') || $self->default_file_name;
   $filename =~ s/\.[\w|\.]+//;
@@ -134,6 +138,10 @@ sub create_form {
     {
       'name'    => 'data_type',
       'value'   => $hub->param('data_type'),
+    },
+    {
+      'name'    => 'data_action',
+      'value'   => $hub->param('data_action'),
     },
     {
       'name'    => 'component',
@@ -233,7 +241,11 @@ sub create_form {
     $tutorial_fieldset->add_notes($html);
   }
 
-  return $form;
+  return $self->dom->create_element('div', {
+    'id'        => 'DataExport',
+    'class'     => 'js_panel',
+    'children'  => [ {'node_name' => 'input', 'class' => 'subpanel_type', 'value' => 'DataExport', 'type' => 'hidden' }, $form ]
+  });
 }
 
 sub default_file_name { 

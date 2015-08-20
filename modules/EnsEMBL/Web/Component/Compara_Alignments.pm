@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,15 +57,15 @@ sub content {
                     'species' => $self->object->species,
                   });
   return $alert_box if $error;
-  my $warnings;
+  my ($warnings, $image_link);
   
   my $html = $alert_box;
   
-  if ($type eq 'Gene') {
+  if ($type eq 'Gene' && $align) {
     my $location = $object->Obj; # Use this instead of $slice because the $slice region includes flanking
     
-    $html .= sprintf(
-      '<p style="font-weight:bold"><a href="%s">Go to a graphical view of this alignment</a></p>',
+    $image_link = sprintf(
+      '<p style="font-weight:bold"><a href="%s">View an image of this alignment</a></p>',
       $hub->url({
         type   => 'Location',
         action => 'Compara_Alignments/Image',
@@ -75,7 +75,7 @@ sub content {
     );
   }
   
-  $slice = $slice->invert if $hub->param('strand') == -1;
+  $slice = $slice->invert if ($hub->param('strand') && $hub->param('strand') == -1);
 
   my $align_blocks;
   my $num_groups = 0;
@@ -84,8 +84,8 @@ sub content {
   my $is_low_coverage_species = 0; #is this species part of the low coverage set in the EPO_LOW_COVERAGE alignments
 
   #method_link_species_set class and type
-  my $method_class = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'ALIGNMENTS'}{$align}{'class'};
-  my $method_type = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'ALIGNMENTS'}{$align}{'type'};
+  my $method_class = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'ALIGNMENTS'}{$align}{'class'} if ($align);
+  my $method_type = $hub->species_defs->multi_hash->{'DATABASE_COMPARA'}{'ALIGNMENTS'}{$align}{'type'} if ($align);
 
   # Get all alignment blocks and group_ids when asking for a specific alignment
   if ($align) {
@@ -149,10 +149,9 @@ sub content {
   #If the slice_length is long, split the sequence into chunks to speed up the process
   #Note that slice_length is not set if need to display a target_slice_eable
   if ($align && $slice_length && $slice_length >= $self->{'subslice_length'}) {
-
     my ($table, $padding) = $self->get_slice_table($slices, 1);
-    $html .= $self->draw_tree($cdb, $align_blocks, $slice, $align, $method_class, $groups, $slices);
-    $html .= $table . $self->chunked_content($slice_length, $self->{'subslice_length'}, { padding => $padding, length => $slice_length });
+    $html .= $self->draw_tree($cdb, $align_blocks, $slice, $align, $method_class, $groups, $slices);    
+    $html .= $image_link . $table . $self->chunked_content($slice_length, $self->{'subslice_length'}, { padding => $padding, length => $slice_length });
 
   } else {
     my ($table, $padding);
@@ -160,13 +159,14 @@ sub content {
     #Draw target_slice_table for overlapping alignments
     if ($need_target_slice_table) {
       $table = $self->_get_target_slice_table($slice, $align, $align_blocks, $groups, $method_class, $method_type, $is_low_coverage_species, $cdb);
-      $html .= $table;
+      $html .= $image_link . $table;
     } else {
       #Write out sequence if length is short enough
       $html .= $self->draw_tree($cdb, $align_blocks, $slice, $align, $method_class, $groups, $slices) if ($align);
-      $html .= $self->content_sub_slice($slice, $slices, undef, $cdb); # Direct call if the sequence length is short enough
+      $html .= $image_link . $self->content_sub_slice($slice, $slices, undef, $cdb) if($align); # Direct call if the sequence length is short enough
     }
   }
+  
   $html .= $self->show_warnings($warnings);
  
   return $html;
@@ -186,7 +186,7 @@ sub _get_sequence {
   my $hub          = $self->hub;
   my $object       = $self->object || $hub->core_object($hub->param('data_type'));
      $slice      ||= $object->slice;
-     $slice        = $slice->invert if !$_[0] && $hub->param('strand') == -1;
+     $slice        = $slice->invert if !$_[0] && $hub->param('strand') && $hub->param('strand') == -1;
   my $species_defs = $hub->species_defs;
   my $start        = $hub->param('subslice_start');
   my $end          = $hub->param('subslice_end');
@@ -334,33 +334,34 @@ sub draw_tree {
 
     #Restrict the tree by looking at the species in the AlignSlice
     $restricted_tree = $gab->get_GenomicAlignTree;
-    my $num_slices = @$slices;
-    my $cnt =0;
+  }
 
-    foreach my $this_node (@{$restricted_tree->get_all_sorted_genomic_align_nodes()}) {
+    # Remove the leaves (and their parents) from the tree if the species is
+    # hidden by the current configuration (i.e. is not in $slices)
+    my %slice_ok = map {(lc $_->{name}) => 1} @$slices;
+    foreach my $this_node (@{$restricted_tree->get_all_leaves}) {
       my $genomic_align_group = $this_node->genomic_align_group;
       next if (!$genomic_align_group);
       my $node_name = $genomic_align_group->genome_db->name;
-      my $this_slice = $slices->[$cnt];
-      if ($cnt < $num_slices && lc($slices->[$cnt]->{name}) eq $node_name) {
-        #if need to distinguish between nodes of the same name, maybe try checking that the
-        #genomic_aligns in the slice and group are identical
-        #my $slice_gas = $this_slice->{genomic_align_ids}; #hash
-        #my $tree_gas = $genomic_align_group->{genomic_align_array};
-        $cnt++;
-      } else {
-        $this_node->disavow_parent;
-        $restricted_tree = $restricted_tree->minimize_tree;
-      }
+      next if $slice_ok{$node_name};
+      $this_node->disavow_parent;
+      $restricted_tree = $restricted_tree->minimize_tree;
     }
-  }
 
   #Get cigar lines from each Slice which will be passed to the genetree.pm drawing code
   my $slice_cigar_lines;
 
+  # The nodes should be in the same order as the slices, so we can match
+  # the internal nodes to the ancestral slices
+  my @internal_nodes = grep {not $_->is_leaf} @{$restricted_tree->get_all_sorted_genomic_align_nodes};
   foreach my $this_slice (@$slices) {
-    next if (lc($this_slice->{name}) eq "ancestral_sequences"); #skip cigar lines for ancestral seqs
-    push @$slice_cigar_lines, $this_slice->{cigar_line};
+    if (lc($this_slice->{name}) eq "ancestral_sequences") {
+      #skip cigar lines for ancestral seqs and transfer the counter_position flag
+      my $ga_node = shift @internal_nodes;
+      $ga_node->{_counter_position} = $this_slice->{_counter_position};
+    } else {
+      push @$slice_cigar_lines, $this_slice->{cigar_line};
+    }
   }
 
   #Get low coverage species from the EPO_LOW_COVERAGE species set
@@ -428,7 +429,7 @@ sub get_slice_table {
         $number_padding = length $end    if length $end    > $number_padding;
       }
       
-      if ($species eq 'Ancestral sequences') {
+      if ($species =~ /^Ancestral sequences/) {
         $table_rows .= $slice->{'_tree'};
         $ancestral_sequences = 1;
       } else {
@@ -653,18 +654,30 @@ sub _get_low_coverage_genome_db_sets {
   return $low_coverage_species;
 }
 
-sub export_options { return {
-                              'action'  => 'TextAlignments', 
-                              'params'  => ['align'], 
-                              'caption' => 'Download alignment',
-                              }; 
+sub export_options { 
+  my $self = shift;
+  my $hub = $self->hub;
+  my @species_options;
+  my $align = $hub->param('align');
+  
+  return unless $align;  
+
+  foreach (grep { /species_$align/ } $hub->param) {
+    push @species_options, $_;  
+  }
+  
+  return {
+          'action'  => 'TextAlignments', 
+          'params'  => ['align', @species_options], 
+          'caption' => 'Download alignment',
+        }; 
 }
 
 sub get_export_data {
 ## Get data for export
   my $self = shift;
   my $hub = $self->hub;
-  ## Fetch explicitly, as we're probably coming from a DataExport URL
+  ## Fetch object explicitly, as we're probably coming from a DataExport URL
   my $obj = $hub->core_object($hub->param('data_type'));
   return $obj;
 }

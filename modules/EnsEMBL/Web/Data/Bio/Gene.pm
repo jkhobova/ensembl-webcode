@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ sub convert_to_drawing_parameters {
         'label'    => $g->stable_id,
         'gene_id'  => [ $g->stable_id ],
         'extra'    => {'description' => $g->description},
-        'href'     => $hub->url({ type => 'ZMenu', action => 'Gene', g => $g->stable_id, r => ($g->seq_region_name . ':' . $g->seq_region_start . '-' . $g->seq_region_end)}),        
+        'href'     => { type => 'ZMenu', action => 'Gene', g => $g->stable_id, r => ($g->seq_region_name . ':' . $g->seq_region_start . '-' . $g->seq_region_end)},
       }
     }
   }

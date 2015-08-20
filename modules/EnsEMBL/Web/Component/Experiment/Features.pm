@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,7 +50,8 @@ sub content {
 
     my @links;
     foreach my $source (@{$feature_set_info->{'source_info'}}){
-     push @links, $self->source_link($source->[0], $source->[1]);
+     push @links, $self->source_link($source->[0], $source->[1],
+                    $feature_set_info->{'experimental_group'});
     }
     my $source_link  = join ' ', @links;
     
@@ -96,8 +97,14 @@ sub content {
 }
 
 sub source_link {
-  my ($self, $source_label, $source_link) = @_;
-  $source_link ||= "http://www.ebi.ac.uk/ena/data/view/$source_label" if $source_label =~ /^SRX/;
+  my ($self, $source_label, $source_link,$project_name) = @_;
+
+  unless($source_link) {
+    $source_link = $self->hub->source_url("REGSRC_".uc($project_name),{
+      ID => $source_label,
+    });
+  }
+
   return $source_link
     ? sprintf('<a href="%s" title="View source">%s</a>',
       encode_entities($source_link),

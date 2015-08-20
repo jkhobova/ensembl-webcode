@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -218,7 +218,16 @@ sub createObjects {
       my $anchor1 = $self->param('anchor1'); 
       
       if ($seq_region && !$anchor1) {
-        $location = $self->_location_from_SeqRegion($seq_region, $start, $end, $strand); # We have a seq region, and possibly start, end and strand. From this we can directly get a location
+        if ($self->param('band')) {
+          my $slice;
+          eval {
+            $slice = $self->_slice_adaptor->fetch_by_chr_band($seq_region, $self->param('band'));
+          };
+          $location = $self->new_location($slice) if $slice;
+        }
+        else {
+          $location = $self->_location_from_SeqRegion($seq_region, $start, $end, $strand); # We have a seq region, and possibly start, end and strand. From this we can directly get a location
+        }
       } else {
         # Mapping of supported URL parameters to function calls which should get a Location for those parameters
         # Ordered by most likely parameter to appear in the URL

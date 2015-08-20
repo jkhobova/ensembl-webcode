@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ sub availability {
       $availability->{'history'} = 1;
     } elsif ($obj->isa('Bio::EnsEMBL::Gene')) {
       my $member      = $self->database('compara') ? $self->database('compara')->get_GeneMemberAdaptor->fetch_by_stable_id($obj->stable_id) : undef;
-      my $pan_member  = $self->database('compara_pan_ensembl') ? $self->database('compara_pan_ensembl')->get_GeneMemberAdaptor->fetch_by_source_stable_id('ENSEMBLGENE', $obj->stable_id) : undef;
+      my $pan_member  = $self->database('compara_pan_ensembl') ? $self->database('compara_pan_ensembl')->get_GeneMemberAdaptor->fetch_by_stable_id($obj->stable_id) : undef;
       my $counts      = $self->counts($member, $pan_member);
       my $rows        = $self->table_info($self->get_db, 'stable_id_event')->{'rows'};
       my $funcgen_res = $self->database('funcgen') ? $self->table_info('funcgen', 'feature_set')->{'rows'} ? 1 : 0 : 0;
@@ -68,36 +68,22 @@ sub availability {
         $availability->{'has_2ndary_cons'}    = $tree && $tree->get_tagvalue('ss_cons') ? 1 : 0;
         $availability->{'has_2ndary'}         = ($availability->{'has_2ndary_cons'} || ($obj->canonical_transcript && scalar(@{$obj->canonical_transcript->get_all_Attributes('ncRNA')}))) ? 1 : 0;
       }
+      $availability->{'has_gxa'}              = $self->gxa_check;
 
       $availability->{'alt_allele'}           = $self->table_info($self->get_db, 'alt_allele')->{'rows'};
       $availability->{'regulation'}           = !!$funcgen_res; 
       $availability->{'has_species_tree'}     = $member ? $member->has_GeneGainLossTree : 0;
       $availability->{'family'}               = !!$counts->{families};
+      $availability->{'family_count'}         = $counts->{families};
       $availability->{'not_rnaseq'}           = $self->get_db eq 'rnaseq' ? 0 : 1;
       $availability->{"has_$_"}               = $counts->{$_} for qw(transcripts alignments paralogs orthologs similarity_matches operons structural_variation pairwise_alignments);
       $availability->{'multiple_transcripts'} = $counts->{'transcripts'} > 1;
       $availability->{'not_patch'}            = $obj->stable_id =~ /^ASMPATCH/ ? 0 : 1; ## TODO - hack - may need rewriting for subsequent releases
       $availability->{'has_alt_alleles'} =  scalar @{$self->get_alt_alleles};
       
-      my $phen_avail = 0;
       if ($self->database('variation')) {
-        my $pfa = Bio::EnsEMBL::Registry->get_adaptor($self->species, 'variation', 'PhenotypeFeature');
-        $phen_avail = $pfa->count_all_by_Gene($self->Obj) ? 1 : 0;
-        
-        if(!$phen_avail) {
-          my $hgncs =  $obj->get_all_DBEntries('hgnc') || [];
-          
-          if(scalar @$hgncs && $hgncs->[0]) {
-            my $hgnc_name = $hgncs->[0]->display_id;
-            if ($hgnc_name) {
-              
-              # this method is super-fast as it uses some direct SQL on a nicely indexed table
-              $phen_avail = ($pfa->_check_gene_by_HGNC($hgnc_name)) ? 1 : 0;
-            }
-          }
-        }
+        $availability->{'has_phenotypes'} = $self->get_phenotype;
       }
-      $availability->{'phenotype'} = $phen_avail;
 
       if ($self->database('compara_pan_ensembl')) {
         $availability->{'family_pan_ensembl'} = !!$counts->{families_pan};
@@ -143,9 +129,11 @@ sub counts {
       $counts->{'operons'} = scalar @{$obj->feature_Slice->get_all_Operons};
     }
     $counts->{structural_variation} = 0;
+
     if ($self->database('variation')){ 
       my $vdb = $self->species_defs->get_config($self->species,'databases')->{'DATABASE_VARIATION'};
       $counts->{structural_variation} = $vdb->{'tables'}{'structural_variation'}{'rows'};
+      $counts->{phenotypes} = $self->get_phenotype;
     }
     if ($member) {
       $counts->{'orthologs'}  = $member->number_of_orthologues;
@@ -176,7 +164,24 @@ sub counts {
   
   return $counts;
 }
+sub get_phenotype {
+  my $self = shift;
+  
+  my $phen_count  = 0;
+  my $pfa         = Bio::EnsEMBL::Registry->get_adaptor($self->species, 'variation', 'PhenotypeFeature');
+  $phen_count     = $pfa->count_all_by_Gene($self->Obj);
 
+  if (!$phen_count) {
+    my $hgncs = $self->Obj->get_all_DBEntries('hgnc') || [];
+
+    if(scalar @$hgncs && $hgncs->[0]) {
+      my $hgnc_name = $hgncs->[0]->display_id;
+      $phen_count   = $pfa->_check_gene_by_HGNC($hgnc_name) if $hgnc_name; # this method is super-fast as it uses some direct SQL on a nicely indexed table
+    }
+  }
+  
+  return $phen_count;
+}
 sub get_xref_available{
   my $self=shift;
   my $available = ($self->count_xrefs > 0);
@@ -241,8 +246,7 @@ sub insdc_accession {
     if($slice) {
       my $name = $self->_insdc_synonym($slice,'INSDC');
       if($name) {
-        return join(':',$slice->coord_system->name,$csv,$name,
-                      $slice->start,$slice->end,$slice->strand);
+        return join(':',$csv,$name);
       }
     }
   }
@@ -484,6 +488,8 @@ sub seq_region_strand           { return $_[0]->Obj->strand;     }
 sub feature_length              { return $_[0]->Obj->feature_Slice->length; }
 sub get_latest_incarnation      { return $_[0]->Obj->get_latest_incarnation; }
 sub get_all_associated_archived { return $_[0]->Obj->get_all_associated_archived; }
+sub gxa_check                   { return; } #implemented in widget plugin, to check for gene expression atlas availability
+
 
 sub get_database_matches {
   my $self = shift;
@@ -826,6 +832,29 @@ sub fetch_homology_species_hash {
   return \%homologues;
 }
 
+sub get_homologue_alignments {
+  my $self        = shift;
+  my $compara_db  = shift || 'compara';
+  my $database    = $self->database($compara_db);
+  my $hub         = $self->hub;
+  my $msa;
+
+  if ($database) {  
+    my $member  = $database->get_GeneMemberAdaptor->fetch_by_stable_id($self->Obj->stable_id);
+    my $tree    = $database->get_GeneTreeAdaptor->fetch_default_for_Member($member);
+    my @params  = ($member, 'ENSEMBL_ORTHOLOGUES');
+    my $species = [];
+    foreach (grep { /species_/ } $hub->param) {
+      (my $sp = $_) =~ s/species_//;
+      push @$species, $sp if $hub->param($_) eq 'yes';
+    }
+    push @params, $species if scalar @$species;
+    $msa        = $tree->get_alignment_of_homologues(@params);
+    $tree->release_tree;
+  }
+  return $msa;
+}
+
 sub get_compara_Member {
   my $self       = shift;
   my $compara_db = shift || 'compara';
@@ -834,7 +863,7 @@ sub get_compara_Member {
   if (!$self->{$cache_key}) {
     my $compara_dba = $self->database($compara_db)              || return;
     my $adaptor     = $compara_dba->get_adaptor('GeneMember')   || return;
-    my $member      = $adaptor->fetch_by_source_stable_id('ENSEMBLGENE', $self->stable_id);
+    my $member      = $adaptor->fetch_by_stable_id($self->stable_id);
     
     $self->{$cache_key} = $member if $member;
   }
@@ -914,10 +943,8 @@ sub get_SpeciesTree {
     my $geneTree = $geneTree_Adaptor->fetch_default_for_Member($member) || return;
     my $cafeTree = $cafeTree_Adaptor->fetch_by_GeneTree($geneTree) || return;		   
     
-    $cafeTree->multifurcate_tree();    
-    my $lca_id   = $cafeTree->lca_id;
-    $cafeTree    = $cafeTree->root;
-    $cafeTree    = $cafeTree->lca_reroot($lca_id) if($collapsability eq 'part');     
+    $cafeTree->multifurcate_tree();
+    $cafeTree    = $cafeTree->root($cafeTree->root->lca_reroot($cafeTree->lca_id)) if($collapsability eq 'part');     
       
     $self->{$cache_key} = $cafeTree;
   }
@@ -1168,10 +1195,10 @@ sub store_TransformedDomains {
     next unless $transcript->translation; 
     foreach my $pf ( @{$transcript->translation->get_all_ProteinFeatures( lc($key) )} ) { 
 ## rach entry is an arry containing the actual pfam hit, and mapped start and end co-ordinates
-      if (exists $seen{$pf->id}{$pf->start}){ 
+      if (exists $seen{$pf->display_id}{$pf->start}){
         next;
       } else {
-        $seen{$pf->id}->{$pf->start} =1; 
+        $seen{$pf->display_id}->{$pf->start} =1;
         my @A = ($pf);  
         foreach( $transcript->pep2genomic( $pf->start, $pf->end ) ) {
           my $O = $self->munge_gaps( 'transcripts', $_->start - $offset, $_->end - $offset) - $offset; 

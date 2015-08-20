@@ -1,5 +1,5 @@
 /*
- * Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+ * Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -114,5 +114,17 @@ $.extend($.fn.dataTableExt.oSort, {
   },
   'html-desc': function (a, b) {
     return this['string-desc'](a.replace(/<.*?>/g, ''), b.replace(/<.*?>/g, ''));
+  },
+  'html_numeric-asc': function (a, b) {
+    function the_number(x) {
+      return x.replace(/<.*?>/g,'').replace(/[^0-9]/g,'');
+    };
+    return this['numeric-asc'](the_number(a),the_number(b));
+  },
+  'html_numeric-desc': function (a, b) {
+    function the_number(x) {
+      return x.replace(/<.*?>/g,'').replace(/[^0-9]/g,'');
+    };
+    return this['numeric-desc'](the_number(a),the_number(b));
   }
 });

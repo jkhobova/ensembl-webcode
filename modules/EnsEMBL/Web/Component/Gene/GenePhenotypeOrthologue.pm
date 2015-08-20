@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -96,11 +96,11 @@ sub content {
           '<a href="%s">%s</a>',
           $phen_link,
           $pf->phenotype->description,
-          $pf->source
+          $pf->source_name
         );
         
         # source
-        my $source = $pf->source;
+        my $source = $pf->source_name;
         my $ext_id = $pf->external_id;
         my $tax = $species_defs->get_config($species, 'TAXONOMY_ID');
       
@@ -126,16 +126,16 @@ sub content {
     }
   }
   if (scalar @rows) { 
-    $html .= '<h2>Phenotypes associated with the gene orthologues in other species</h2>'.
+    $html .= '<h2>Phenotype and disease annotations associated orthologues of this gene in other species</h2>'.
       $self->new_table([ 
-        { key => 'species',   align => 'left', title => 'Species'                   },
-        { key => 'gene',      align => 'left', title => 'Gene'                      },
         { key => 'phenotype', align => 'left', title => 'Phenotype', sort => 'html' },
         { key => 'source',    align => 'left', title => 'Source'                    },
+        { key => 'species',   align => 'left', title => 'Species'                   },
+        { key => 'gene',      align => 'left', title => 'Gene'                      },
       ], \@rows, { data_table => 'no_col_toggle', exportable => 1 })->render if @rows;
   }
   else {
-    $html .= '<p>No phenotypes associated with gene orthologues in other species.</p>';
+    $html .= '<p>No phenotype or disease associated with orthologues of this gene in other species.</p>';
   }
   return $html;
 }

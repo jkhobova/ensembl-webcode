@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -157,7 +157,7 @@ sub fetch_archives_by_species {
       species as s,
       release_species as rs
     WHERE  
-      r.number = rs.release_id
+      r.release_id = rs.release_id
     AND
       s.species_id = rs.species_id
     AND

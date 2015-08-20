@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ use List::MoreUtils qw(uniq);
 use EnsEMBL::Draw::DrawableContainer;
 use EnsEMBL::Draw::VDrawableContainer;
 
-use EnsEMBL::Web::Document::Image;
+use EnsEMBL::Web::Document::Image::GD;
 use EnsEMBL::Web::Document::Table;
 use EnsEMBL::Web::Document::TwoCol;
 use EnsEMBL::Web::Constants;
@@ -49,7 +49,6 @@ use EnsEMBL::Web::DOM;
 use EnsEMBL::Web::Form;
 use EnsEMBL::Web::Form::ModalForm;
 use EnsEMBL::Web::RegObj;
-use EnsEMBL::Web::TmpFile::Text;
 
 sub new {
   my $class = shift;
@@ -328,16 +327,6 @@ sub content_buttons {
   return $nav_html.$blue_html;
 }
 
-sub cache {
-warn "###############\n!!! DEPRECATED - will be removed in release 79\n################";
-  my ($panel, $obj, $type, $name) = @_;
-  my $cache = EnsEMBL::Web::TmpFile::Text->new(
-    prefix   => $type,
-    filename => $name,
-  );
-  return $cache;
-}
-
 sub set_cache_params {
   my $self        = shift;
   my $hub         = $self->hub;  
@@ -431,11 +420,32 @@ sub append_s_to_plural {
 }
 
 sub helptip {
-  ## Returns html for an info icon which displays the given helptip when hovered
-  ## @param Tip text (TODO - make it HTML compatiable)
-  ## @param Optional - icon name to override the default info icon
-  my ($self, $tip, $icon) = @_;
-  return sprintf '<img src="%s/i/16/%s.png" alt="(?)" class="_ht helptip-icon" title="%s" />', $self->static_server, $icon || 'info', $tip;
+  ## Returns a dotted underlined element with given text and hover helptip
+  ## @param Display html
+  ## @param Tip html
+  my ($self, $display_html, $tip_html) = @_;
+  return $tip_html ? sprintf('<span class="ht _ht"><span class="_ht_tip hidden">%s</span>%s</span>', encode_entities($tip_html), $display_html) : $display_html;
+}
+
+sub glossary_helptip {
+  ## Creates a dotted underlined element that has a mouseover glossary helptip (helptip text fetched from glossary table of help db)
+  ## @param Display html
+  ## @param Entry to match the glossary key to fetch help tip html (if not provided, use the display html as glossary key)
+  my ($self, $display_html, $entry) = @_;
+
+  $entry  ||= $display_html;
+  $entry    = $self->get_glossary_entry($entry);
+
+  return $self->helptip($display_html, $entry);
+}
+
+sub get_glossary_entry {
+  ## Gets glossary value for a given entry
+  ## @param Entry key to lookup against the glossary
+  ## @return Glossary description (possibly HTML)
+  my ($self, $entry) = @_;
+
+  return $self->hub->glossary_lookup->{$entry} // '';
 }
 
 sub error_panel {
@@ -546,16 +556,6 @@ sub EC_URL {
   return $self->hub->get_ExtURL_link("EC $string", 'EC_PATHWAY', $url_string);
 }
 
-sub glossary_mouseover {
-  my ($self, $entry, $display_text) = @_;
-  $display_text ||= $entry;
-  
-  my %glossary = $self->hub->species_defs->multiX('ENSEMBL_GLOSSARY');
-  (my $text = $glossary{$entry}) =~ s/<.+?>//g;
-
-  return $text ? qq{<span class="glossary_mouseover">$display_text<span class="floating_popup">$text</span></span>} : $display_text;
-}
-
 sub modal_form {
   ## Creates a modal-friendly form with hidden elements to automatically pass to handle wizard buttons
   ## Params Name (Id attribute) for form
@@ -569,6 +569,7 @@ sub modal_form {
   $params->{'current'}  = $hub->action;
   $params->{'name'}     = $name;
   $params->{$_}         = $options->{$_} for qw(class method wizard label no_back_button no_button buttons_on_top buttons_align skip_validation enctype);
+  $params->{'enctype'}  = 'multipart/form-data' if !$self->renderer->{'_modal_dialog_'};
 
   if ($options->{'wizard'}) {
     my $species = $hub->type eq 'UserData' ? $hub->data_species : $hub->species;
@@ -608,12 +609,11 @@ sub new_image {
   if ($export) {
     # Set text export on image config
     $image_config->set_parameter('text_export', $export) if $formats{$export}{'extn'} eq 'txt';
-    $image_config->set_parameter('sortable_tracks', 0);
   }
   
   $_->set_parameter('component', $id) for grep $_->{'type'} eq $config_type, @image_configs;
  
-  my $image = EnsEMBL::Web::Document::Image->new($hub, $self->id, \@image_configs);
+  my $image = EnsEMBL::Web::Document::Image::GD->new($hub, $self->id, \@image_configs);
   $image->drawable_container = EnsEMBL::Draw::DrawableContainer->new(@_) if $self->html_format;
   
   return $image;
@@ -623,7 +623,7 @@ sub new_vimage {
   my $self  = shift;
   my @image_config = $_[1];
   
-  my $image = EnsEMBL::Web::Document::Image->new($self->hub, $self->id, \@image_config);
+  my $image = EnsEMBL::Web::Document::Image::GD->new($self->hub, $self->id, \@image_config);
   $image->drawable_container = EnsEMBL::Draw::VDrawableContainer->new(@_) if $self->html_format;
   
   return $image;
@@ -631,7 +631,7 @@ sub new_vimage {
 
 sub new_karyotype_image {
   my ($self, $image_config) = @_;  
-  my $image = EnsEMBL::Web::Document::Image->new($self->hub, $self->id, $image_config ? [ $image_config ] : undef);
+  my $image = EnsEMBL::Web::Document::Image::GD->new($self->hub, $self->id, $image_config ? [ $image_config ] : undef);
   $image->{'object'} = $self->object;
   
   return $image;
@@ -643,10 +643,10 @@ sub new_table {
   my $table    = EnsEMBL::Web::Document::Table->new(@_);
   my $filename = $hub->filename($self->object);
   my $options  = $_[2];
+  $self->{'_table_count'}++ if $options->{'exportable'};
   
   $table->session    = $hub->session;
   $table->format     = $self->format;
-  $table->export_url = $hub->url unless defined $options->{'exportable'} || $self->{'_table_count'}++;
   $table->filename   = join '-', $self->id, $filename;
   $table->code       = $self->id . '::' . ($options->{'id'} || $self->{'_table_count'});
   
@@ -676,14 +676,18 @@ sub _export_image {
   my $hub = $self->hub;
   
   $image->{'export'} = 'iexport' . ($flag ? " $flag" : '');
-  
-  my ($format, $scale) = $hub->param('export') ? split /-/, $hub->param('export'), 2 : ('', 1);
-  $scale eq 1 if $scale <= 0;
-  
+
+  my @export = split(/-/,$hub->param('export'));
+  my $format = (shift @export)||'';
+  my %params = @export;
+  my $scale = abs($params{'s'}) || 1;
+  my $contrast = abs($params{'c'}) || 1;
+
   my %formats = EnsEMBL::Web::Constants::EXPORT_FORMATS;
   
   if ($formats{$format}) {
     $image->drawable_container->{'config'}->set_parameter('sf',$scale);
+    $image->drawable_container->{'config'}->set_parameter('contrast',$contrast);
     (my $comp = ref $self) =~ s/[^\w\.]+/_/g;
     my $filename = sprintf '%s-%s-%s.%s', $comp, $hub->filename($self->object), $scale, $formats{$format}{'extn'};
     
@@ -715,11 +719,11 @@ sub toggleable_table {
   
   return sprintf('
     <div class="toggleable_table">
+      %s
       <h2><a rel="%s_table" class="toggle _slide_toggle %s" href="#%s_table">%s</a></h2>
       %s
-      %s
     </div>',
-    $id, $state[1], $id, $title, $extra_html, $table->render
+    $extra_html, $id, $state[1], $id, $title, $table->render
   ); 
 }
 

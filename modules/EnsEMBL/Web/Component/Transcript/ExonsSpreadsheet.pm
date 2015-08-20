@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -87,7 +87,7 @@ sub initialize {
     my $exon_end   = $exon->seq_region_end;
 
     $exon_id = "<strong>$exon_id</strong>" if $entry_exon && $entry_exon eq $exon_id;
-    
+
     my $exon_seq = $self->get_exon_sequence_data($config, $exon);
     
     push @data, $export ? $exon_seq : {
@@ -148,7 +148,7 @@ sub content {
     { data_table => 'no_sort', exportable => 1 }
   );
 
-  return sprintf '<div class="adornment-key"></div><div class="adornment-load">'.$table->render."</div>";
+  return sprintf '<div class="_adornment_key adornment-key"></div><div class="adornment-load">'.$table->render."</div>";
 }
 
 sub export_options { return {'action' => 'ExonSeq'}; }
@@ -172,7 +172,9 @@ sub get_exon_sequence_data {
   my $exon_end     = $exon->end;
   my $utr_start    = $coding_start && $coding_start > $exon_start; # exon starts with UTR
   my $utr_end      = $coding_end   && $coding_end   < $exon_end;   # exon ends with UTR
-  my $class        = $coding_start && $coding_end ? 'e0' : 'eu';   # if the transcript is entirely UTR, use utr class for the whole sequence
+  my $class        = defined $coding_start ? 'e1' : 'e0';
+  my $utr_class    = defined $coding_start ? 'eu' : 'e0';
+  my $utr_key      = defined $coding_start ? 'utr' : 'exon0';
   my @sequence     = map {{ letter => $_, class => $class }} split '', $seq;
   my ($coding_length, $utr_length);
   
@@ -188,18 +190,18 @@ sub get_exon_sequence_data {
     
     if ($utr_end) {
       $coding_length = 0 if $coding_length < 0;
-      $sequence[$_]{'class'} = 'eu' for $coding_length..$seq_length - 1;
-      $config->{'key'}{'exons/Introns'}{'utr'} = 1;
+      $sequence[$_]{'class'} = $utr_class for $coding_length..$seq_length - 1;
+      $config->{'key'}{'exons/Introns'}{$utr_key} = 1;
     }
     
     if ($utr_start) {
-      $sequence[$_]{'class'} = 'eu' for 0..($utr_length < $seq_length ? $utr_length : $seq_length) - 1;
-      $config->{'key'}{'exons/Introns'}{'utr'} = 1;
+      $sequence[$_]{'class'} = $utr_class for 0..($utr_length < $seq_length ? $utr_length : $seq_length) - 1;
+      $config->{'key'}{'exons/Introns'}{$utr_key} = 1;
     }
   }
   
   $config->{'last_number'} = $strand == 1 ? $exon_start - 1 : $exon_end + 1 if $config->{'number'} eq 'slice'; # Ensures that line numbering is correct if there are no introns
-  $config->{'key'}{'exons/Introns'}{$coding_start && $coding_end ? 'exon' : 'utr'} = 1;
+  $config->{'key'}{'exons/Introns'}{$coding_start && $coding_end ? 'exon1' : $utr_key} = 1;
   
   $self->add_variations($config, $exon->feature_Slice, \@sequence) if $config->{'snp_display'} ne 'off';
   
@@ -220,7 +222,7 @@ sub get_intron_sequence_data {
   my $display_width = $config->{'display_width'};
   my $strand        = $config->{'strand'};
   my $sscon         = $config->{'sscon'};
-  my @dots          = map {{ letter => $_, class => 'e1' }} split '', '.' x ($display_width - 2 * ($sscon % ($display_width / 2)));
+  my @dots          = map {{ letter => $_, class => 'ei' }} split '', '.' x ($display_width - 2 * ($sscon % ($display_width / 2)));
   my @sequence;
   
   eval {
@@ -228,8 +230,8 @@ sub get_intron_sequence_data {
       my $start = { slice => $exon->slice->sub_Slice($intron_start, $intron_start + $sscon - 1, $strand) };
       my $end   = { slice => $next_exon->slice->sub_Slice($intron_end - ($sscon - 1), $intron_end, $strand) };
       
-      $start->{'sequence'} = [ map {{ letter => $_, class => 'e1' }} split '', lc $start->{'slice'}->seq ];
-      $end->{'sequence'}   = [ map {{ letter => $_, class => 'e1' }} split '', lc $end->{'slice'}->seq   ];
+      $start->{'sequence'} = [ map {{ letter => $_, class => 'ei' }} split '', lc $start->{'slice'}->seq ];
+      $end->{'sequence'}   = [ map {{ letter => $_, class => 'ei' }} split '', lc $end->{'slice'}->seq   ];
      
       if ($config->{'snp_display'} eq 'on') {
         $self->add_variations($config, $_->{'slice'}, $_->{'sequence'}) for $start, $end;
@@ -241,7 +243,7 @@ sub get_intron_sequence_data {
     } else {
       my $slice = $exon->slice->sub_Slice($intron_start, $intron_end, $strand);
       
-      @sequence = map {{ letter => $_, class => 'e1' }} split '', lc $slice->seq;
+      @sequence = map {{ letter => $_, class => 'ei' }} split '', lc $slice->seq;
       
       $self->add_variations($config, $slice, \@sequence) if $config->{'snp_display'} eq 'on';
       $self->add_line_numbers('intron', $config, $intron_length);
@@ -286,7 +288,7 @@ sub get_flanking_sequence_data {
   $upstream->{'sequence'}   = [ map {{ letter => $_, class => 'ef' }} split '', lc $upstream->{'seq'}   ];
   $downstream->{'sequence'} = [ map {{ letter => $_, class => 'ef' }} split '', lc $downstream->{'seq'} ];
   
-  if ($config->{'snp_display'} eq 'yes') {
+  if ($config->{'snp_display'} eq 'on') {
     $self->add_variations($config, $_->{'slice'}, $_->{'sequence'}) for $upstream, $downstream;
   }
   
@@ -400,19 +402,20 @@ sub add_line_numbers {
 
 sub build_sequence {
   my ($self, $sequence, $config) = @_;
-  $config->{'html_template'} = '<pre class="exon_sequence">%s</pre>';
+  $config->{'html_template'} = '<pre class="text_sequence exon_sequence">%s</pre>';
   return $self->SUPER::build_sequence([ $sequence ], $config,1);
 }
 
 sub get_key {
   return shift->SUPER::get_key($_[0], {
     'exons/Introns' => {
-      exon     => { class => 'e0', text => 'Translated sequence' },
-      intron   => { class => 'e1', text => 'Intron sequence'     },
+      exon0    => { class => 'e0', text => 'Non-coding exon'     },
+      exon1    => { class => 'e1', text => 'Translated sequence' },
+      intron   => { class => 'ei', text => 'Intron sequence'     },
       utr      => { class => 'eu', text => 'UTR'                 },
       flanking => { class => 'ef', text => 'Flanking sequence'   },
     }
-  },$_[2]);
+  }, $_[2]);
 }
 
 1;

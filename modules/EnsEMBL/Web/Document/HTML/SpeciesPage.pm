@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,12 +37,8 @@ sub render {
 
   ## Get current Ensembl species
   my @valid_species = $species_defs->valid_species;
-  my $species_check;
-  foreach my $sp (@valid_species) {
-    $species_check->{$sp}++;
-  }
-
   my %species;
+
   foreach my $sp (@valid_species) {
     my $info    = {
         'dir'         => $sp,
@@ -109,9 +105,9 @@ sub render {
       <input type="hidden" class="panel_type" value="Content">';
 
   my $columns = [
-      { key => 'common',      title => 'Common name',     width => '40%', align => 'left', sort => 'string' },
+      { key => 'common',      title => 'Common name',     width => '40%', align => 'left', sort => 'html'   },
       { key => 'species',     title => 'Scientific name', width => '25%', align => 'left', sort => 'string' },
-      { key => 'taxon_id',    title => 'Taxon ID',        width => '10%', align => 'left', sort => 'integer' },
+      { key => 'taxon_id',    title => 'Taxon ID',        width => '10%', align => 'left', sort => 'numeric'},
       { key => 'assembly',    title => 'Ensembl Assembly',width => '10%', align => 'left' },
       { key => 'accession',   title => 'Accession',       width => '10%', align => 'left' },
       { key => 'variation',   title => 'Variation database',  width => '5%', align => 'center', sort => 'string' },
@@ -135,27 +131,21 @@ sub render {
       $common =~ s/([A-Z])([a-z]+)\s+([a-z]+)/$1. $3/;
     }
 
-    my ($sp_link, $rel, $pre_link, $image_fade);
+    my ($sp_link, $pre_link, $image_fade);
     my $img_url = '/';
     if ($info->{'status'} eq 'pre') {
       $image_fade = 'opacity:0.7';
       $sp_link    = sprintf('<a href="http://pre.ensembl.org/%s" rel="external" class="bigtext pre_species">%s</a><br />(Pre)', $dir, $common);
       $img_url    = 'http://pre.ensembl.org/';
-      $rel        = ' rel="external"';
       $pre_link   = sprintf('<a href="http://pre.ensembl.org/%s" rel="external">%s</a>', $dir, $info->{'pre_assembly'});
     }
-# this has been replaced with creating another row instead (see below after add_row)
-#    elsif ($info->{'status'} eq 'both') {
-#      $sp_link    = sprintf('<a href="/%s" class="bigtext">%s</a>', $dir, $common);
-#      $pre_link   = sprintf('<a href="http://pre.ensembl.org/%s">%s</a>', $dir, $info->{'pre_assembly'});
-#    }
     else {
       $sp_link    = sprintf('<a href="/%s" class="bigtext">%s</a>', $dir, $common);
       $pre_link   = '-';
     }
     $table->add_row({
-        'common' => sprintf('<a href="%s%s/"%s><img src="/i/species/48/%s.png" alt="%s" style="float:left;padding-right:4px;%s" /></a>%s',
-                        $img_url, $dir, $rel, $dir, $common, $image_fade, $sp_link),
+        'common' => sprintf('<a href="%s%s/"><img src="/i/species/48/%s.png" alt="%s" style="float:left;padding-right:4px;%s" /></a>%s',
+                        $img_url, $dir,  $dir, $common, $image_fade, $sp_link),
       'species'     => '<i>'.$name.'</i>',
       'taxon_id'    => $info->{'taxon_id'},
       'assembly'    => $info->{'assembly'},
@@ -168,7 +158,7 @@ sub render {
 # if a species is both pre and ensembl we are adding a new row for the pre assembly    
     if ($info->{'status'} eq 'both') {
       $table->add_row({
-          'common' => sprintf('<a href="http://pre.ensembl.org/%s" rel="external"><img src="/i/species/48/%1$s.png" alt="%s" style="float:left;padding-right:4px;opacity:0.7" /></a><a href="http://pre.ensembl.org/%1$s" rel="external" class="bigtext pre_species">%2$s</a><br />(Pre)', $dir, $common),
+          'common' => sprintf('<a href="http://pre.ensembl.org/%s"><img src="/i/species/48/%1$s.png" alt="%s" style="float:left;padding-right:4px;opacity:0.7" /></a><a href="http://pre.ensembl.org/%1$s" rel="external" class="bigtext pre_species">%2$s</a><br />(Pre)', $dir, $common),
           'species'     => '<i>'.$name.'</i>',
           'taxon_id'    => $info->{'taxon_id'},
           'assembly'    => '-',

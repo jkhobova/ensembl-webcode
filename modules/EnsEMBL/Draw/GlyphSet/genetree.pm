@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -194,11 +194,11 @@ sub _init {
       } elsif( $f->{_genes}->{$current_gene} ){
         $label_colour     = 'red';
         $collapsed_colour = 'red';
-        $node_colour = "royalblue";
+        $node_colour = 'navyblue';
         $bold = defined($other_genome_db_id);
       } elsif( $f->{_genome_dbs}->{$current_genome_db_id} ){
         $label_colour     = 'blue';
-        $collapsed_colour = 'royalblue';
+        $collapsed_colour = 'navyblue';
         $bold = defined($other_genome_db_id);
       }
     }
@@ -236,13 +236,11 @@ sub _init {
 
     my $collapsed_xoffset = 0;
     if ($f->{_bg_colour}) {
-      my $width  = $bitmap_width;
       my $y = $f->{y_from} + 2;
       my $height = $f->{y_to} - $f->{y_from} - 1;
       my $x = $f->{x};
       my $width = $bitmap_width - $x - 5;
-      push @bg_glyphs, Sanger::Graphics::Glyph::Rect->new
-          ({
+      push @bg_glyphs, $self->Rect({
             'x'      => $x,
             'y'      => $y,
             'width'  => $width,
@@ -257,8 +255,7 @@ sub _init {
       my $x = $f->{x} + 2;
       $collapsed_xoffset = $width;
 
-      push @node_glyphs, Sanger::Graphics::Glyph::Poly->new
-          ({
+      push @node_glyphs, $self->Poly({
             'points' => [ $x, $y,
                           $x + $width, $y - ($height / 2 ),
                           $x + $width, $y + ($height / 2 ) ],
@@ -267,8 +264,7 @@ sub _init {
             'href'   => $node_href,
           });
 
-      my $node_glyph = Sanger::Graphics::Glyph::Rect->new
-          ({
+      my $node_glyph = $self->Rect({
             'x'      => $f->{x},
             'y'      => $f->{y},
             'width'  => 5,
@@ -278,8 +274,7 @@ sub _init {
           });
       push @node_glyphs, $node_glyph;
       if ($f->{_node_type} eq 'gene_split') {
-        push @node_glyphs, Sanger::Graphics::Glyph::Rect->new
-            ({
+        push @node_glyphs, $self->Rect({
               'x'         => $f->{x},
               'y'         => $f->{y},
               'width'     => 5,
@@ -309,8 +304,7 @@ sub _init {
       push(@labels, $nodes_label);
       
       # Add a 'collapse' href
-      my $node_glyph = Sanger::Graphics::Glyph::Rect->new
-          ({
+      my $node_glyph = $self->Rect({
             'x'         => $f->{x} - $bold,
             'y'         => $f->{y} - $bold,
             'width'     => 5 + 2 * $bold,
@@ -322,8 +316,7 @@ sub _init {
           });
       push @node_glyphs, $node_glyph;
       if ($bold) {
-        my $node_glyph = Sanger::Graphics::Glyph::Rect->new
-            ({
+        my $node_glyph = $self->Rect({
               'x'         => $f->{x},
               'y'         => $f->{y},
               'width'     => 5,
@@ -335,8 +328,7 @@ sub _init {
         push @node_glyphs, $node_glyph;
       }
       if ($f->{_node_type} eq 'gene_split') {
-        push @node_glyphs, Sanger::Graphics::Glyph::Rect->new
-            ({
+        push @node_glyphs, $self->Rect({
               'x'         => $f->{x},
               'y'         => $f->{y},
               'width'     => 5,
@@ -354,8 +346,7 @@ sub _init {
     my $colour = $tree->isa('Bio::EnsEMBL::Compara::CAFEGeneFamilyNode') ? $node_colour : '';
     my $bordercolour = $tree->isa('Bio::EnsEMBL::Compara::CAFEGeneFamilyNode') ? "black" : $node_colour;
     
-      push @node_glyphs, Sanger::Graphics::Glyph::Rect->new
-          ({
+      push @node_glyphs, $self->Rect({
             'x'         => $f->{x},
             'y'         => $f->{y},
             'width'     => 5,
@@ -655,6 +646,7 @@ sub features {
   my @features;
   my $n_members = ($tree->isa('Bio::EnsEMBL::Compara::CAFEGeneFamilyNode'))? $tree->n_members : '';
   $cut = 0 if ($tree->isa('Bio::EnsEMBL::Compara::CAFEGeneFamilyNode')); #only for cafe tree, cut is 0 so that the branch are single blue line (no dotted or other colours)
+  $n_members = $tree->{_counter_position} if $tree->isa('Bio::EnsEMBL::Compara::GenomicAlignTree');
 
   my $f = {
     _distance    => $distance,
@@ -778,9 +770,9 @@ sub features {
 
     if (my $member = $tree->gene_member) {
       my $stable_id = $member->stable_id;
-      my $chr_name  = $member->chr_name;
-      my $chr_start = $member->chr_start;
-      my $chr_end   = $member->chr_end;
+      my $chr_name  = $member->dnafrag->name;
+      my $chr_start = $member->dnafrag_start;
+      my $chr_end   = $member->dnafrag_end;
       
       $f->{'_gene'} = $stable_id;
       $f->{'_genes'} ||= {};

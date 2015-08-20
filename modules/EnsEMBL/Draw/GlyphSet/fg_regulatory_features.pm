@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -82,9 +82,10 @@ sub fetch_features {
 sub _check_build_type {
   my ($self) = @_;
 
+  my $species = $self->{'config'}{'species'};
   unless(defined $self->{'new_reg_build'}) {
     $self->{'new_reg_build'} =
-      $self->{'config'}->hub->is_new_regulation_pipeline;
+      $self->{'config'}->hub->is_new_regulation_pipeline($species);
   }
 }
 
@@ -277,6 +278,6 @@ sub feature_label {
 }
 
 sub label_overlay { return 1; }
-sub max_label_rows { return $_[0]->my_config('max_label_rows') || 2; }
+sub max_label_rows { return $_[0]->my_config('max_label_rows') || 1; }
 
 1;

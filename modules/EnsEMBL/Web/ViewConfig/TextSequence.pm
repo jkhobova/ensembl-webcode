@@ -1,6 +1,6 @@
 =head1 LICENSE
 
-Copyright [1999-2014] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
+Copyright [1999-2015] Wellcome Trust Sanger Institute and the EMBL-European Bioinformatics Institute
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -52,13 +52,12 @@ sub add_variation_options {
   my $markup  = shift || EnsEMBL::Web::Constants::MARKUP_OPTIONS();
   my $options = shift || {};
   my $hub     = $self->hub;
-  my @order   = $self->variation_fields($options);
   my $fields;
 
   ## Tweak standard markup 
   $markup->{'snp_display'} = { 
                               'name'  => 'snp_display',
-                              'label' => $options->{'label'} || 'Show variations',
+                              'label' => $options->{'label'} || 'Show variants',
                               };
   my @snp_values;
 
@@ -114,7 +113,7 @@ sub variation_options {
     $self->add_form_element($markup{'consequence_filter'});
   }
   
-  # Population filtered variations currently fail to return in a reasonable time
+  # Population filtered variants currently fail to return in a reasonable time
 #  if ($options->{'populations'}) {
 #    my $pop_adaptor = $hub->get_adaptor('get_PopulationAdaptor', 'variation'); 
 #    my @populations = map @{$pop_adaptor->$_}, @{$options->{'populations'}};
