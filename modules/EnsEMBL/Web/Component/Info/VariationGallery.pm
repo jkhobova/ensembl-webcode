@@ -291,7 +291,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_phenotype',
-                                  'caption' => '',
+                                  'caption' => 'Phenotypes associated with this variant',
                                 },
           'Gene Phenotype' => {
                                   'url'     => $hub->url({'type'    => 'Gene',
@@ -299,7 +299,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_gen_phen',
-                                  'caption' => '',
+                                  'caption' => 'Phenotypes associated with a gene overlapping this variant',
                                 },
           'Phenotype Karyotype' => {
                                   'url'     => $hub->url({'type'    => 'Phenotype',
@@ -307,7 +307,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_karyotype',
-                                  'caption' => '',
+                                  'caption' => 'Locations of variants associated with a phenotype',
                                 },
           'Phenotype Location Table' => {
                                   'url'     => $hub->url({'type'    => 'Phenotype',
@@ -315,7 +315,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_phen_table',
-                                  'caption' => '',
+                                  'caption' => 'Table of variants associated with a phenotype',
                                 },
           'Population Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
