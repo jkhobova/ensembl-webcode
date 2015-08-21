@@ -259,7 +259,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_protein',
-                                  'caption' => '',
+                                  'caption' => "Variants on a protein's domains",
                                 },
           'cDNA Sequence' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -267,7 +267,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_cdna_seq',
-                                  'caption' => '',
+                                  'caption' => 'Variants on cDNA sequence',
                                 },
           'Protein Sequence' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -275,7 +275,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_protein_seq',
-                                  'caption' => '',
+                                  'caption' => 'Variants on protein sequence',
                                 },
           'Variation Protein' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -283,7 +283,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_protvars',
-                                  'caption' => '',
+                                  'caption' => 'Table of variants for a protein',
                                 },
           'Phenotype Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
