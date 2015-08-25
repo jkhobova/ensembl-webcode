@@ -40,7 +40,7 @@ sub content {
   my $layout = [
                   {
                     'title' => 'Locations',                      
-                    'pages' => ['Region in Detail', 'Genomic Context', 'Flanking Sequence', 'Phylogenetic Context'],
+                    'pages' => ['Region in Detail', 'Genomic Context', 'Flanking Sequence', 'Phylogenetic Context', 'LD Image'],
                   },
                   {
                     'title' => 'Genes',
@@ -227,7 +227,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_trans_image',
-                                  'caption' => '',
+                                  'caption' => 'Image showing variants on a transcript',
                                 },
           'Transcript Table' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -323,7 +323,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_pop_table',
-                                  'caption' => '',
+                                  'caption' => 'Table of allele frequencies in different populations',
                                 },
           'Population Image' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
@@ -331,7 +331,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_pop_piecharts',
-                                  'caption' => '',
+                                  'caption' => 'Pie charts of allele frequencies across populations',
                                 },
           'Genotypes Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
@@ -346,8 +346,8 @@ sub _get_pages {
                                                           'action'  => 'LD',
                                                           'v'      => $v,
                                                         }),
-                                  'img'       => 'variation_ldview',
-                                  'caption'   => '',
+                                  'img'       => 'variation_ld_image',
+                                  'caption'   => 'Linkage disequilibrium plot in a region',
                                   'multi'     => $multi_location,  
                                   'disabled'  => $no_location,  
                                 },
@@ -356,8 +356,8 @@ sub _get_pages {
                                                           'action'  => 'HighLD',
                                                           'v'      => $v,
                                                         }),
-                                  'img'     => 'variation_highld',
-                                  'caption' => '',
+                                  'img'     => 'variation_ld_table',
+                                  'caption' => 'Linkage disequilibrium around a variant',
                                 },
           'Resequencing' => {
                                   'url'       => $hub->url({'type'    => 'Location',
