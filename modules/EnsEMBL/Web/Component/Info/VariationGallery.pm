@@ -335,11 +335,11 @@ sub _get_pages {
                                 },
           'Genotypes Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
-                                                          'action'  => 'Individual',
+                                                          'action'  => 'Sample',
                                                           'v'      => $v,
                                                         }),
-                                  'img'     => 'variation_individual',
-                                  'caption' => '',
+                                  'img'     => 'variation_sample',
+                                  'caption' => 'Genotypes for samples within a population',
                                 },
           'LD Image' => {
                                   'url'       => $hub->url({'type'    => 'Location',
@@ -365,7 +365,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'       => 'variation_resequencing',
-                                  'caption'   => '',
+                                  'caption'   => 'Variants in resequenced samples',
                                   'multi'     => $multi_location,  
                                   'disabled'  => $no_location,  
                                 },
