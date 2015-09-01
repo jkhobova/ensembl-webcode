@@ -144,7 +144,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                           }),
                                   'img'       => 'variation_location',
-                                  'caption'   => 'Region where a variant is located',
+                                  'caption'   => 'Region where your variant is located',
                                   'multi'     => $multi_location,  
                                   'disabled'  => $no_location,  
                                 },
@@ -154,7 +154,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_genomic',
-                                  'caption' => 'Genomic context of a variant',
+                                  'caption' => 'Genomic context of your variant',
                                 },
           'Flanking Sequence' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
@@ -162,7 +162,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                           }),
                                   'img'     => 'variation_sequence',
-                                  'caption' => 'Flanking sequence for a variant',
+                                  'caption' => 'Flanking sequence for your variant',
                                   },
           'Phylogenetic Context' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
@@ -170,7 +170,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                           }),
                                   'img'     => 'variation_phylogenetic',
-                                  'caption' => 'Phylogenetic context of a variant',
+                                  'caption' => 'Phylogenetic context of your variant',
                                   },
           'Gene Sequence' => {
                                   'url'       => $hub->url({'type'  => 'Gene',
@@ -179,7 +179,7 @@ sub _get_pages {
                                                           'g'       => $g,
                                                           }),
                                   'img'       => 'variation_gene_seq',
-                                  'caption'   => 'Sequence of the gene overlapping a variant',
+                                  'caption'   => 'Sequence of the gene overlapping your variant',
                                   'multi'     => $multi_gene,  
                                   'disabled'  => $no_gene,  
                             },
@@ -190,7 +190,7 @@ sub _get_pages {
                                                           'g'       => $g,
                                                           }),
                                   'img'       => 'variation_gene_image',
-                                  'caption'   => 'Image showing all variants within a gene',
+                                  'caption'   => 'Image showing all variants in the same gene as this one',
                                   'multi'     => $multi_gene,  
                                   'disabled'  => $no_gene,  
                           },
@@ -201,7 +201,7 @@ sub _get_pages {
                                                           'g'       => $g,
                                                         }),
                                   'img'       => 'variation_gene_table',
-                                  'caption'   => 'Table of variants within a gene',
+                                  'caption'   => 'Table of all variants in the same gene as this one',
                                   'multi'     => $multi_gene,  
                                   'disabled'  => $no_gene,  
                           },
@@ -211,7 +211,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_mappings',
-                                  'caption' => 'Genes and regulatory features around a variant',
+                                  'caption' => 'Genes and regulatory features around your variant',
                                 },
           'Citations' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
@@ -219,7 +219,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_citations',
-                                  'caption' => 'Papers citing a variant',
+                                  'caption' => 'Papers citing your variant',
                                 },
           'Transcript Image' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -227,7 +227,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_trans_image',
-                                  'caption' => 'Image showing all variants within a transcript',
+                                  'caption' => 'Image showing all variants within the same transcript as this one',
                                 },
           'Transcript Table' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -235,7 +235,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_trans_table',
-                                  'caption' => 'Table of variants within a transcript',
+                                  'caption' => 'Table of variants within the same transcript as this one',
                                 },
           'Transcript Comparison' => {
                                   'url'     => $hub->url({'type'    => 'Gene',
@@ -291,7 +291,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_phenotype',
-                                  'caption' => 'Phenotypes associated with a variant',
+                                  'caption' => 'Phenotypes associated with your variant',
                                 },
           'Gene Phenotype' => {
                                   'url'     => $hub->url({'type'    => 'Gene',
@@ -299,7 +299,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_gen_phen',
-                                  'caption' => 'Phenotypes associated with a gene which overlaps a given variant',
+                                  'caption' => 'Phenotypes associated with a gene which overlaps your variant',
                                 },
           'Phenotype Karyotype' => {
                                   'url'     => $hub->url({'type'    => 'Phenotype',
@@ -315,7 +315,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_phen_table',
-                                  'caption' => 'Table of variants associated with a phenotype',
+                                  'caption' => 'Table of variants associated with the same phenotypeas this one',
                                 },
           'Population Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
@@ -331,7 +331,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_pop_piecharts',
-                                  'caption' => 'Pie charts of allele frequencies across populations',
+                                  'caption' => 'Pie charts of allele frequencies in different populations',
                                 },
           'Genotypes Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
@@ -357,7 +357,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_ld_table',
-                                  'caption' => 'Linkage disequilibrium around a variant',
+                                  'caption' => 'Linkage disequilibrium with your variant',
                                 },
           'Resequencing' => {
                                   'url'       => $hub->url({'type'    => 'Location',
