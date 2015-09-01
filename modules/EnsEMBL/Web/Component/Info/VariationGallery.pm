@@ -41,26 +41,32 @@ sub content {
                   {
                     'title' => 'Locations',                      
                     'pages' => ['Region in Detail', 'Genomic Context', 'Flanking Sequence', 'Phylogenetic Context', 'LD Image'],
+                    'icon'  => 'karyotype.png',
                   },
                   {
                     'title' => 'Genes',
                     'pages' => ['Gene Sequence', 'Gene Table', 'Gene Image', 'Gene Regulation', 'Citations'],
+                    'icon'  => 'dna.png',
                   },
                   {
                     'title' => 'Transcripts',
                     'pages' => ['Transcript Image', 'Transcript Table', 'Transcript Comparison', 'Exons', 'Gene Regulation', 'Citations'],
+                    'icon'  => 'transcripts.png',
                   },
                   {
                     'title' => 'Proteins',
                     'pages' => ['Protein Summary', 'cDNA Sequence', 'Protein Sequence', 'Variation Protein', 'Citations'],
+                    'icon'  => 'protein.png',
                   },
                   {
                     'title' => 'Phenotypes',
                     'pages' => ['Phenotype Table', 'Gene Phenotype', 'Phenotype Karyotype', 'Phenotype Location Table', 'Citations'],
+                    'icon'  => 'var_phenotype_data.png',
                   },
                   {
                     'title' => 'Populations &amp; Individuals',
                     'pages' => ['Population Image', 'Population Table', 'Genotypes Table', 'LD Image', 'LD Table', 'Resequencing', 'Citations'],
+                    'icon'  => 'var_sample_information.png',
                   },
                 ];
 

@@ -105,7 +105,8 @@ sub format_gallery {
     #next unless scalar @pages;
 
     my $title = $group->{'title'};
-    push @toc, sprintf('<a href="#%s">%s</a>', lc($title), $title);
+    my $icon  = $group->{'icon'};
+    push @toc, sprintf('<a href="#%s"><img src="/i/48/%s" class="alongside" /></a><a href="#%s" class="notext">%s</a>', lc($title), $icon, lc($title), $title);
     $html .= sprintf('<h2 id="%s">%s</h2>', lc($title), $title);
 
     $html .= '<div class="gallery">';
@@ -169,7 +170,7 @@ sub format_gallery {
 
     $html .= '</div>';
   }
-  my $toc_string = sprintf('<p class="center">%s</p>', join(' | ', @toc));
+  my $toc_string = sprintf('<p class="center">%s</p>', join(' &middot; &middot; &middot; ', @toc));
 
   return $toc_string.$html;  
 }
