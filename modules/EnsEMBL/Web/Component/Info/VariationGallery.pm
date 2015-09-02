@@ -342,7 +342,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_phen_table',
-                                  'caption' => 'Table of variants associated with the same phenotypeas this one',
+                                  'caption' => 'Table of variants associated with the same phenotype as this one',
                                   'disabled'  => $no_phenotype,  
                                 },
           'Population Table' => {
