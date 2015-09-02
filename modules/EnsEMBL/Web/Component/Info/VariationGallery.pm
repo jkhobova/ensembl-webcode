@@ -151,8 +151,8 @@ sub _get_pages {
                               'param'   => 't',
                               'values'  => [{'value' => '', 'caption' => '-- Select transcript --'}],
                             };
-        foreach (sort {$transcripts{$a} cmp $transcripts{$b}} keys %transcripts) {
-          push @{$multi_transcript->{'values'}}, {'value' => $_, 'caption' => $transcripts{$_}->{'name'}};
+        foreach (sort {$transcripts{$a}->{'name'} cmp $transcripts{$b}->{'name'}} keys %transcripts) {
+          push @{$multi_transcript->{'values'}}, {'value' => $_, 'caption' => sprintf('%s (%s)', $transcripts{$_}->{'name'}, $transcripts{$_}->{'biotype'})};
         }
       }
       else {
