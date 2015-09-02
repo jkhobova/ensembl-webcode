@@ -40,19 +40,9 @@ sub content {
   ## first check we have uniquely determined variation
   return $self->_info('A unique location can not be determined for this variant', $object->not_unique_location) if $object->not_unique_location;
 
-  my $data = $object->get_external_data();
-
-  return 'We do not have any external data for this variant' unless (scalar @$data);
-
   # Select only the phenotype features which have the same coordinates as the selected variation
-  my $vf_object = ($vf) ? $self->hub->database('variation')->get_VariationFeatureAdaptor->fetch_by_dbID($vf) : undef;
-  if ($vf_object) {
-    my $chr   = $vf_object->seq_region_name;
-    my $start = $vf_object->seq_region_start;
-    my $end   = $vf_object->seq_region_end;
-    my @new_data = grep {$_->seq_region_name eq $chr && $_->seq_region_start == $start && $_->seq_region_end == $end} @$data;
-    $data = \@new_data;
-  }
+  my $data = $object->get_ega_links;
+  return 'We do not have any external data for this variant' unless (scalar @$data);
 
   my ($table_rows, $column_flags) = $self->table_data($data, $pop_freq);
   my $table      = $self->new_table([], [], { data_table => 1, sorting => [ 'disease asc' ] });
