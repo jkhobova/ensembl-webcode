@@ -110,7 +110,7 @@ sub _get_pages {
       $multi_location = {
                           'type'    => 'Location',
                           'param'   => 'r',
-                          'values'  => [],
+                          'values'  => [{'value' => '', 'caption' => '-- Select coordinates --'}],
                           };
       foreach (sort { $mappings{$a}{'Chr'} cmp $mappings{$b}{'Chr'} || $mappings{$a}{'start'} <=> $mappings{$b}{'start'}} keys %mappings) {
         my $coords = sprintf('%s:%s-%s', $mappings{$_}{'Chr'}, $mappings{$_}{'start'}, $mappings{$_}{'end'});
@@ -133,7 +133,7 @@ sub _get_pages {
         $multi_gene = {
                           'type'    => 'Gene',
                           'param'   => 'g',
-                          'values'  => [],
+                          'values'  => [{'value' => '', 'caption' => '-- Select gene --'}],
                           };
         foreach (sort {$genes{$a} cmp $genes{$b}} keys %genes) {
           push @{$multi_gene->{'values'}}, {'value' => $_, 'caption' => $genes{$_}};
@@ -146,8 +146,20 @@ sub _get_pages {
     }
 
     ## Phenotype checking
-    my $has_phenotypes = $object->count_ega;
-    if ($has_phenotypes) {
+    my $pfs = $object->get_ega_links;
+    if (scalar($pfs)) {
+      if (scalar($pfs) > 1) {
+        $multi_phenotype = {
+                          'type'    => 'Phenotype',
+                          'param'   => 'ph',
+                          'values'  => [{'value' => '', 'caption' => '-- Select phenotype --'}],
+                          };
+        foreach (@$pfs) {
+          my $id = $_->{'_phenotype_id'};
+          my $name = $_->phenotype->description;
+          push @{$multi_phenotype->{'values'}}, {'value' => $id, 'caption' => $name};
+        }
+      }
     }
     else {
       $no_phenotype = 1;
@@ -316,6 +328,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_phenotype',
                                   'caption' => 'Phenotypes associated with your variant',
+                                  'multi'     => $multi_phenotype,  
                                   'disabled'  => $no_phenotype,  
                                 },
           'Gene Phenotype' => {
@@ -325,6 +338,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_gen_phen',
                                   'caption' => 'Phenotypes associated with a gene which overlaps your variant',
+                                  'multi'     => $multi_phenotype,  
                                   'disabled'  => $no_phenotype,  
                                 },
           'Phenotype Karyotype' => {
@@ -334,6 +348,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_karyotype',
                                   'caption' => 'Locations of variants associated with a phenotype',
+                                  'multi'     => $multi_phenotype,  
                                   'disabled'  => $no_phenotype,  
                                 },
           'Phenotype Location Table' => {
@@ -343,6 +358,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_phen_table',
                                   'caption' => 'Table of variants associated with the same phenotype as this one',
+                                  'multi'     => $multi_phenotype,  
                                   'disabled'  => $no_phenotype,  
                                 },
           'Population Table' => {
