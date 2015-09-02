@@ -244,6 +244,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_trans_image',
                                   'caption' => 'Image showing all variants within the same transcript as this one',
+                                  'disabled'  => $no_gene,  
                                 },
           'Transcript Table' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -252,6 +253,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_trans_table',
                                   'caption' => 'Table of variants within the same transcript as this one',
+                                  'disabled'  => $no_gene,  
                                 },
           'Transcript Comparison' => {
                                   'url'     => $hub->url({'type'    => 'Gene',
@@ -260,6 +262,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_trans_comp',
                                   'caption' => "Comparison of a gene's transcripts, showing variants",
+                                  'disabled'  => $no_gene,  
                                 },
           'Exons' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -268,6 +271,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_exons',
                                   'caption' => 'Variations within each exon sequence',
+                                  'disabled'  => $no_gene,  
                                 },
           'Protein Summary' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -276,6 +280,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_protein',
                                   'caption' => "Variants on a protein's domains",
+                                  'disabled'  => $no_gene,  
                                 },
           'cDNA Sequence' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -284,6 +289,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_cdna_seq',
                                   'caption' => 'Variants on cDNA sequence',
+                                  'disabled'  => $no_gene,  
                                 },
           'Protein Sequence' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -292,6 +298,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_protein_seq',
                                   'caption' => 'Variants on protein sequence',
+                                  'disabled'  => $no_gene,  
                                 },
           'Variation Protein' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -300,6 +307,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_protvars',
                                   'caption' => 'Table of variants for a protein',
+                                  'disabled'  => $no_gene,  
                                 },
           'Phenotype Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
