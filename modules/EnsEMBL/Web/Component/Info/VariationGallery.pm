@@ -90,6 +90,7 @@ sub _get_pages {
   ## Check availabity of views for this variant
   my ($no_location, $multi_location) = (0, 0);
   my ($no_gene, $multi_gene) = (0, 0);
+  my ($no_phenotype, $multi_phenotype) = (0, 0);
 
   my $builder   = $hub->{'_builder'};
   my $factory   = $builder->create_factory('Variation');
@@ -143,6 +144,15 @@ sub _get_pages {
         $g = $ids[0];
       }
     }
+
+    ## Phenotype checking
+    my $has_phenotypes = $object->count_ega;
+    if ($has_phenotypes) {
+    }
+    else {
+      $no_phenotype = 1;
+    }
+
 
     return {'Region in Detail' => {
                                   'url'       => $hub->url({'type'    => 'Location',
@@ -298,6 +308,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_phenotype',
                                   'caption' => 'Phenotypes associated with your variant',
+                                  'disabled'  => $no_phenotype,  
                                 },
           'Gene Phenotype' => {
                                   'url'     => $hub->url({'type'    => 'Gene',
@@ -306,6 +317,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_gen_phen',
                                   'caption' => 'Phenotypes associated with a gene which overlaps your variant',
+                                  'disabled'  => $no_phenotype,  
                                 },
           'Phenotype Karyotype' => {
                                   'url'     => $hub->url({'type'    => 'Phenotype',
@@ -314,6 +326,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_karyotype',
                                   'caption' => 'Locations of variants associated with a phenotype',
+                                  'disabled'  => $no_phenotype,  
                                 },
           'Phenotype Location Table' => {
                                   'url'     => $hub->url({'type'    => 'Phenotype',
@@ -322,6 +335,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_phen_table',
                                   'caption' => 'Table of variants associated with the same phenotypeas this one',
+                                  'disabled'  => $no_phenotype,  
                                 },
           'Population Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
