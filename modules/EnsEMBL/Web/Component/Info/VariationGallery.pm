@@ -123,7 +123,7 @@ sub _get_pages {
     foreach my $varif_id (grep $_ eq $hub->param('vf'), keys %mappings) {
       foreach my $transcript_data (@{$mappings{$varif_id}{'transcript_vari'}}) {
         my $gene = $gene_adaptor->fetch_by_transcript_stable_id($transcript_data->{'transcriptname'}); 
-        $genes{$gene->stable_id}++ if $gene;
+        $genes{$gene->stable_id} = $self->gene_name($gene) if $gene;
       }
     }
 
@@ -134,8 +134,8 @@ sub _get_pages {
                           'param'   => 'g',
                           'values'  => [],
                           };
-        foreach (sort keys %genes) {
-          push @{$multi_gene->{'values'}}, {'value' => $_, 'caption' => $_};
+        foreach (sort {$genes{$a} cmp $genes{$b}} keys %genes) {
+          push @{$multi_gene->{'values'}}, {'value' => $_, 'caption' => $genes{$_}};
         }
       }
       else {
