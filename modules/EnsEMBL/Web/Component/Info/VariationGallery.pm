@@ -347,7 +347,7 @@ sub _get_pages {
                                                           'v'      => $v,
                                                         }),
                                   'img'     => 'variation_karyotype',
-                                  'caption' => 'Locations of variants associated with a phenotype',
+                                  'caption' => 'Locations of all variants associated with the same phenotype as this one',
                                   'multi'     => $multi_phenotype,  
                                   'disabled'  => $no_phenotype,  
                                 },
