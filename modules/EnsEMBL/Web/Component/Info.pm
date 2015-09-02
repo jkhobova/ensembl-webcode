@@ -126,15 +126,16 @@ sub format_gallery {
 
       if ($page->{'disabled'}) {
         ## Disable views that are invalid for this feature
-        $html .= sprintf('<div class="preview_caption">%s<br />[Not available for this %s]</div><br />', $page->{'caption'}, lc($type));
         $html .= sprintf('<img src="/i/gallery/%s.png" class="disabled" /></a>', $page->{'img'});
+        $html .= sprintf('<div class="preview_caption">%s<br />[Not available for this %s]</div><br />', $page->{'caption'}, lc($type));
       }
       elsif ($page->{'multi'}) {
         ## Disable links on views that can't be mapped to a single feature/location
+        $html .= sprintf('<img src="/i/gallery/%s.png" /></a>', $page->{'img'});
         my $data_param  = $page->{'multi'}{'param'};
         my $multi_type  = $page->{'multi'}{'type'};
         $html .= sprintf('<div class="preview_caption">%s<br /><br />This %s maps to multiple %s</div><br />', $page->{'caption'}, $data_type->{$type}{'term'}, lc($multi_type).'s');
-        my $multi_form  = $self->new_form({'action' => $page->{'url'}, 'method' => 'post'});
+        my $multi_form  = $self->new_form({'action' => $page->{'url'}, 'method' => 'post', 'class' => 'freeform'});
         my $field          = $multi_form->add_field({
                                         'type'    => 'Dropdown',
                                         'name'    => $data_param,
@@ -142,15 +143,14 @@ sub format_gallery {
                                         });
         $field->add_element({'type' => 'submit', 'value' => 'Go'}, 1);
         $html .= $multi_form->render;
-        $html .= sprintf('<img src="/i/gallery/%s.png" /></a>', $page->{'img'});
       }
       else {
+        $html .= sprintf('<a href="%s"><img src="/i/gallery/%s.png" /></a>', $page->{'url'}, $page->{'img'});
         $html .= sprintf('<div class="preview_caption"><a href="%s" class="nodeco">%s</a></div><br />', $page->{'url'}, $page->{'caption'});
 
-        $html .= sprintf('<a href="%s"><img src="/i/gallery/%s.png" /></a>', $page->{'url'}, $page->{'img'});
       }
 
-      my $form = $self->new_form({'action' => $page->{'url'}, 'method' => 'post'});
+      my $form = $self->new_form({'action' => $page->{'url'}, 'method' => 'post', 'class' => 'freeform'});
 
       my $data_param = $data_type->{$type}{'param'};
       my $value           = $self->hub->param('default') ? $self->hub->param($data_param) : undef;
@@ -164,7 +164,7 @@ sub format_gallery {
 
       $field->add_element({'type' => 'submit', 'value' => 'Go'}, 1);
 
-      $html .= '<div style="width:300px">'.$form->render.'</div>';
+      $html .= '<div class="gallery_preview preview_caption">'.$form->render.'</div>';
 
       $html .= '</div>';
     }
