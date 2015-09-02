@@ -80,14 +80,17 @@ sub assembly_dropdown {
 
 our $data_type = {
                   'Gene'      => {'param'   => 'g', 
+                                  'term'    => 'gene',
                                   'label_1' => 'Choose a Gene',
                                   'label_2' => 'or choose another Gene',
                                   },
                   'Variation' => {'param'   => 'v', 
+                                  'term'    => 'variant',
                                   'label_1' => 'Choose a Variant',
                                   'label_2' => 'or choose another Variant',
                                   },
                   'Location'  => {'param'   => 'r', 
+                                  'term'    => 'location',
                                   'label_1' => 'Choose Coordinates',
                                   'label_2' => 'or choose different coordinates'
                                   },
@@ -118,6 +121,8 @@ sub format_gallery {
 
       $html .= '<div class="gallery_preview">';
 
+      my $label = $self->hub->param('default') ? 'label_1' : 'label_2';
+
       if ($page->{'disabled'}) {
         ## Disable views that are invalid for this feature
         $html .= sprintf('<div class="preview_caption">%s<br />[Not available for this %s]</div><br />', $page->{'caption'}, lc($type));
@@ -125,7 +130,18 @@ sub format_gallery {
       }
       elsif ($page->{'multi'}) {
         ## Disable links on views that can't be mapped to a single feature/location
-        $html .= sprintf('<div class="preview_caption">%s<br />N.B. Maps to multiple %s</div><br />', $page->{'caption'}, lc($type).'s');
+        my $data_param  = $page->{'multi'}{'param'};
+        my $multi_type  = $page->{'multi'}{'type'};
+        $html .= sprintf('<div class="preview_caption">%s<br /><br />This %s maps to multiple %s</div><br />', $page->{'caption'}, $data_type->{$type}{'term'}, lc($multi_type).'s');
+        my $multi_form  = $self->new_form({'action' => $page->{'url'}, 'method' => 'post'});
+        my $field          = $multi_form->add_field({
+                                        'type'    => 'Dropdown',
+                                        'name'    => $data_param,
+                                        'label'   => 'Select '.$multi_type,
+                                        'values'  => $page->{'multi'}{'values'},
+                                        });
+        $field->add_element({'type' => 'submit', 'value' => 'Go'}, 1);
+        $html .= $multi_form->render;
         $html .= sprintf('<img src="/i/gallery/%s.png" /></a>', $page->{'img'});
       }
       else {
@@ -136,31 +152,15 @@ sub format_gallery {
 
       my $form = $self->new_form({'action' => $page->{'url'}, 'method' => 'post'});
 
-      my ($field, $data_param);
-      my $label = $self->hub->param('default') ? 'label_1' : 'label_2';
-      my $value = $self->hub->param('default') ? $self->hub->param($data_param) : undef;
-
-      if ($page->{'multi'}) {
-        $data_param = $page->{'multi'}{'param'};
-        $type       = $page->{'multi'}{'type'};
-        $field      = $form->add_field({
-                                        'type'    => 'Dropdown',
-                                        'name'    => $data_param,
-                                        'label'   => $data_type->{$type}{$label},
-                                        'values'  => $page->{'multi'}{'values'},
-                                        'value'   => $value,
-                                        });
-      }
-      else {
-        $data_param = $data_type->{$type}{'param'};
-        $field      = $form->add_field({
+      my $data_param = $data_type->{$type}{'param'};
+      my $value           = $self->hub->param('default') ? $self->hub->param($data_param) : undef;
+      my $field      = $form->add_field({
                                         'type'  => 'String',
                                         'size'  => 10,
                                         'name'  => $data_param,
                                         'label' => $data_type->{$type}{$label},
                                         'value' => $value,
                                         });
-      }
 
       $field->add_element({'type' => 'submit', 'value' => 'Go'}, 1);
 
@@ -174,6 +174,16 @@ sub format_gallery {
   my $toc_string = sprintf('<p class="center">%s</p>', join(' &middot; &middot; &middot; ', @toc));
 
   return $toc_string.$html;  
+}
+
+sub gene_name {
+## This is basically the same as Object::Gene::short_caption
+  my ($self, $gene) = @_;
+
+  my $dxr  = $gene->can('display_xref') ? $gene->display_xref : undef;
+  my $name = $dxr ? $dxr->display_id : ($gene->display_id || $gene->stable_id);
+
+  return $name;
 }
 
 our $header_info = {
