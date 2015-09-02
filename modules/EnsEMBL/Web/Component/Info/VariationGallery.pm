@@ -89,8 +89,8 @@ sub _get_pages {
 
   ## Check availabity of views for this variant
   my ($no_location, $multi_location) = (0, 0);
-  my ($no_gene, $multi_gene) = (0, 0);
-  my ($no_phenotype, $multi_phenotype) = (0, 0);
+  my ($no_location, $no_gene, $no_phenotype, $no_protein) = (0, 0, 0, 0);
+  my ($multi_location, $multi_gene, $multi_transcript, $multi_protein, $multi_phenotype);
 
   my $builder   = $hub->{'_builder'};
   my $factory   = $builder->create_factory('Variation');
@@ -118,14 +118,63 @@ sub _get_pages {
       }
     }
 
-    ## Gene checking
-    my ($g, %genes);
+    ## Gene and transcript checking
+    my ($g, $t, %genes, %transcripts, %translations);
     my $gene_adaptor  = $hub->get_adaptor('get_GeneAdaptor');
+    my $trans_adaptor = $hub->get_adaptor('get_TranscriptAdaptor');
     foreach my $varif_id (grep $_ eq $hub->param('vf'), keys %mappings) {
       foreach my $transcript_data (@{$mappings{$varif_id}{'transcript_vari'}}) {
+
         my $gene = $gene_adaptor->fetch_by_transcript_stable_id($transcript_data->{'transcriptname'}); 
-        $genes{$gene->stable_id} = $self->gene_name($gene) if $gene;
+        if ($gene) {
+          $genes{$gene->stable_id} = $self->gene_name($gene);
+          my $transcript           = $trans_adaptor->fetch_by_stable_id($transcript_data->{'transcriptname'});
+          if ($transcript) {
+            my $biotype = $transcript->biotype;
+            my $name    = $self->gene_name($transcript);
+            $transcripts{$transcript->stable_id} = {
+                                                    'name'    => $name,
+                                                    'biotype' => $biotype,
+                                                    };
+            if ($biotype eq 'protein-coding') { 
+              $translations{$transcript->stable_id} = $name;
+            }
+          }
+        }
       }
+    }
+    
+    if (scalar keys %transcripts) {
+      if (scalar keys %transcripts > 1) {
+        $multi_transcript = {
+                              'type'    => 'Transcript',
+                              'param'   => 't',
+                              'values'  => [{'value' => '', 'caption' => '-- Select transcript --'}],
+                            };
+        foreach (sort {$transcripts{$a} cmp $transcripts{$b}} keys %transcripts) {
+          push @{$multi_transcript->{'values'}}, {'value' => $_, 'caption' => $transcripts{$_}->{'name'}};
+        }
+      }
+      else {
+        my @ids = keys %transcripts;
+        $t = $ids[0];
+      }
+    } 
+
+    if (scalar keys %translations) {
+      if (scalar keys %translations > 1) {
+        $multi_protein = {
+                          'type'    => 'Transcript',
+                          'param'   => 't',
+                            'values'  => [{'value' => '', 'caption' => '-- Select transcript --'}],
+                          };
+        foreach (sort {$translations{$a} cmp $translations{$b}} keys %translations) {
+          push @{$multi_protein->{'values'}}, {'value' => $_, 'caption' => $translations{$_}};
+        }
+      }
+    }
+    else {
+      $no_protein = 1;
     }
 
     if (scalar keys %genes) {
@@ -205,6 +254,7 @@ sub _get_pages {
                                                           'action'  => 'Sequence',
                                                           'v'       => $v,
                                                           'g'       => $g,
+                                                          'snp_display' => 'yes',
                                                           }),
                                   'img'       => 'variation_gene_seq',
                                   'caption'   => 'Sequence of the gene overlapping your variant',
@@ -256,6 +306,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_trans_image',
                                   'caption' => 'Image showing all variants within the same transcript as this one',
+                                  'multi'     => $multi_transcript,  
                                   'disabled'  => $no_gene,  
                                 },
           'Transcript Table' => {
@@ -265,15 +316,18 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_trans_table',
                                   'caption' => 'Table of variants within the same transcript as this one',
+                                  'multi'     => $multi_transcript,  
                                   'disabled'  => $no_gene,  
                                 },
           'Transcript Comparison' => {
                                   'url'     => $hub->url({'type'    => 'Gene',
                                                           'action'  => 'TranscriptComparison',
                                                           'v'      => $v,
+                                                          'g'       => $g,
                                                         }),
                                   'img'     => 'variation_trans_comp',
                                   'caption' => "Comparison of a gene's transcripts, showing variants",
+                                  'multi'     => $multi_gene,  
                                   'disabled'  => $no_gene,  
                                 },
           'Exons' => {
@@ -283,6 +337,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_exons',
                                   'caption' => 'Variations within each exon sequence',
+                                  'multi'     => $multi_transcript,  
                                   'disabled'  => $no_gene,  
                                 },
           'Protein Summary' => {
@@ -292,7 +347,8 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_protein',
                                   'caption' => "Variants on a protein's domains",
-                                  'disabled'  => $no_gene,  
+                                  'multi'     => $multi_transcript,  
+                                  'disabled'  => $no_protein,  
                                 },
           'cDNA Sequence' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -301,6 +357,7 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_cdna_seq',
                                   'caption' => 'Variants on cDNA sequence',
+                                  'multi'     => $multi_transcript,  
                                   'disabled'  => $no_gene,  
                                 },
           'Protein Sequence' => {
@@ -310,7 +367,8 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_protein_seq',
                                   'caption' => 'Variants on protein sequence',
-                                  'disabled'  => $no_gene,  
+                                  'multi'     => $multi_transcript,  
+                                  'disabled'  => $no_protein,  
                                 },
           'Variation Protein' => {
                                   'url'     => $hub->url({'type'    => 'Transcript',
@@ -319,7 +377,8 @@ sub _get_pages {
                                                         }),
                                   'img'     => 'variation_protvars',
                                   'caption' => 'Table of variants for a protein',
-                                  'disabled'  => $no_gene,  
+                                  'multi'     => $multi_transcript,  
+                                  'disabled'  => $no_protein,  
                                 },
           'Phenotype Table' => {
                                   'url'     => $hub->url({'type'    => 'Variation',
