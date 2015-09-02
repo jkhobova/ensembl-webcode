@@ -79,7 +79,6 @@ sub render {
 
   my %params = (
                 'type'        => 'Radiolist',
-                'label'       => 'I am interested in',
                 'name'        => 'data_type_novar',
                 'field_class' => '_stt_novar',
                 'values'      => $data_types,
