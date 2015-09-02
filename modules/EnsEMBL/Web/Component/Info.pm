@@ -23,6 +23,7 @@ use strict;
 use base qw(EnsEMBL::Web::Component);
 
 use warnings;
+no warnings qw(uninitialized);
 
 use EnsEMBL::Web::DBSQL::ArchiveAdaptor;
 
@@ -137,7 +138,6 @@ sub format_gallery {
         my $field          = $multi_form->add_field({
                                         'type'    => 'Dropdown',
                                         'name'    => $data_param,
-                                        'label'   => 'Select '.$multi_type,
                                         'values'  => $page->{'multi'}{'values'},
                                         });
         $field->add_element({'type' => 'submit', 'value' => 'Go'}, 1);
