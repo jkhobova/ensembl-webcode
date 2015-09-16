@@ -814,7 +814,7 @@ sub _add_trackhub {
     my $shortLabel = $hub_info->{'details'}{'shortLabel'};
     $menu_name = $shortLabel if $shortLabel and $is_poor_name;
 
-    my $menu     = $existing_menu || $self->tree->append_child($self->create_submenu($menu_name, $menu_name, { external => 1, trackhub_menu => 1 }));
+    my $menu     = $existing_menu || $self->tree->append_child($self->create_submenu($menu_name, $menu_name, { external => 1, trackhub_menu => 1, description =>  $hub_info->{'details'}{'longLabel'}}));
 
     my $node;
     my $assemblies = $self->hub->species_defs->get_config($self->species,'TRACKHUB_ASSEMBLY_ALIASES');
@@ -1003,12 +1003,14 @@ sub _add_trackhub_tracks {
       longLabel   => $track->{'longLabel'},
       source_url  => $track->{'bigDataUrl'},
       colour      => exists $track->{'color'} ? $track->{'color'} : undef,
+      colorByStrand => exists $track->{'colorByStrand'} ? $track->{'colorByStrand'} : undef,
+      spectrum    => exists $track->{'spectrum'} ? $track->{'spectrum'} : undef,
       no_titles   => $type eq 'BIGWIG', # To improve browser speed don't display a zmenu for bigwigs
       squish      => $squish,
       signal_range => $track->{'signal_range'},
       %options
     };
-    
+
     # Graph range - Track Hub default is 0-127
 
     if (exists $track->{'viewLimits'}) {
@@ -1213,15 +1215,17 @@ sub _add_bigbed_track {
   unless ($renderers) {
     ($strand, $renderers) = $self->_user_track_settings($args{'source'}{'style'}, 'BIGBED');
   }
-  
+ 
   my $options = {
-    external     => 'external',
-    sub_type     => 'url',
-    colourset    => 'feature',
-    strand       => $strand,
-    style        => $args{'source'}{'style'},
-    longLabel    => $args{'source'}{'longLabel'},
-    addhiddenbgd => 1,
+    external      => 'external',
+    sub_type      => 'url',
+    colourset     => 'feature',
+    colorByStrand => $args{'source'}{'colorByStrand'},
+    spectrum      => $args{'source'}{'spectrum'},
+    strand        => $strand,
+    style         => $args{'source'}{'style'},
+    longLabel     => $args{'source'}{'longLabel'},
+    addhiddenbgd  => 1,
     max_label_rows => 2,
   };
   ## Override default renderer (mainly used by trackhubs)
@@ -2765,7 +2769,7 @@ sub add_alignments {
         $type        = sprintf '%sLASTz %s', $1, lc $2;
         $description = "$type pairwise alignments";
       } elsif ($row->{'type'} =~ /TRANSLATED_BLAT/) {
-        $type        = '';
+        $type        = 'TBLAT';
         $menu_key    = 'pairwise_tblat';
         $description = 'Trans. BLAT net pairwise alignments';
       } else {
@@ -2775,7 +2779,7 @@ sub add_alignments {
         $description = 'Pairwise alignments';
       }
       
-      $description  = qq{<a href="$static" class="cp-external">$description</a> between $self_label and $other_label"};
+      $description  = qq{<a href="$static" class="cp-external">$description</a> between $self_label and $other_label};
       $description .= " $1" if $row->{'name'} =~ /\((on.+)\)/;
 
       $alignments->{$menu_key}{$row->{'id'}} = {
@@ -3739,13 +3743,14 @@ sub share {
   foreach (@unshared_trackhubs) {
     $to_delete{$_} = 1 for grep $user_settings->{$_}, @{$trackhub_tracks{$_->id} || []};  # delete anything for tracks in trackhubs that aren't shared
   }
-  
+ 
+=pod 
   # Reduce track orders if custom tracks aren't shared
   if (scalar keys %to_delete) {
     my %track_ids_to_delete  = map { $_ => 1 } keys %to_delete, map { @{$trackhub_tracks{$_->id} || []} } @unshared_trackhubs;
     my @removed_track_orders = map { $track_ids_to_delete{$_->id} && $_->{'data'}{'node_type'} eq 'track' ? $_->{'data'}{'order'} : () } @{$self->glyphset_configs};
     
-    foreach my $order (values %{$user_settings->{'track_order'}{$species}}) {
+    foreach my $order (@{$user_settings->{'track_order'}{$species}}) {
       my $i = 0;
       
       for (@removed_track_orders) {
@@ -3764,7 +3769,7 @@ sub share {
   }
   
   delete $user_settings->{'track_order'}{$_} for grep $_ ne $species, keys %{$user_settings->{'track_order'}};
-  
+=cut  
   return $user_settings;
 }
 
