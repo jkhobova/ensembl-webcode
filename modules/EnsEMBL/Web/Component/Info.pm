@@ -97,6 +97,9 @@ our $data_type = {
                                   },
                   };
 
+our $header_info = {
+  'Variation' => {'param' => 'v', 'term' => 'variant'},
+};
 
 sub format_gallery {
   my ($self, $type, $layout, $all_pages) = @_;
@@ -128,7 +131,7 @@ sub format_gallery {
       if ($page->{'disabled'}) {
         ## Disable views that are invalid for this feature
         $html .= sprintf('<img src="/i/gallery/%s.png" class="disabled" /></a>', $page->{'img'});
-        $html .= sprintf('<div class="preview_caption">%s<br />[Not available for this %s]</div><br />', $page->{'caption'}, lc($type));
+        $html .= sprintf('<div class="preview_caption">%s<br />[Not available for this %s]</div><br />', $page->{'caption'}, lc($header_info->{$type}{'term'}));
       }
       elsif ($page->{'multi'}) {
         ## Disable links on views that can't be mapped to a single feature/location
@@ -197,10 +200,6 @@ sub gene_name {
 
   return $name;
 }
-
-our $header_info = {
-  'Variation' => {'param' => 'v', 'term' => 'variant'},
-};
 
 sub _sub_header {
   my ($self, $title) = @_;
