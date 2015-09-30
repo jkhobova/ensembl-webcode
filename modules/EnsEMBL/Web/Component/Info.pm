@@ -119,6 +119,7 @@ sub format_gallery {
     foreach (@pages) {
       my $page = $all_pages->{$_};
       next unless $page;
+      my $url = $self->hub->url($page->{'link_to'});
 
       $html .= '<div class="gallery_preview">';
 
@@ -132,25 +133,36 @@ sub format_gallery {
       elsif ($page->{'multi'}) {
         ## Disable links on views that can't be mapped to a single feature/location
         $html .= sprintf('<img src="/i/gallery/%s.png" /></a>', $page->{'img'});
-        my $data_param  = $page->{'multi'}{'param'};
-        my $multi_type  = $page->{'multi'}{'type'};
-        $html .= sprintf('<div class="preview_caption">%s<br /><br />This %s maps to multiple %s</div><br />', $page->{'caption'}, $data_type->{$type}{'term'}, lc($multi_type).'s');
-        my $multi_form  = $self->new_form({'action' => $page->{'url'}, 'method' => 'post', 'class' => 'freeform'});
-        my $field          = $multi_form->add_field({
+        my $multi_type = $page->{'multi'}{'type'};
+        if ($page->{'multi'}{'zmenu'}) {
+          my $params = $page->{'multi'}{'zmenu'};
+          ## Also pass the parameters for the page we want the zmenu to link to
+          while (my($k, $v) = each(%{$page->{'link_to'}})) {
+            $params->{"link_$k"} = $v;
+          }
+          my $zmenu_link  = $self->hub->url($params);
+          $html .= sprintf('<div class="preview_caption">%s<br /><br />This %s maps to <a href="%s" class="_zmenu">multiple %s</a></div><br />', $page->{'caption'}, $data_type->{$type}{'term'}, $zmenu_link, lc($multi_type).'s');
+        }
+        else {
+          my $data_param  = $page->{'multi'}{'param'};
+          $html .= sprintf('<div class="preview_caption">%s<br /><br />This %s maps to multiple %s</div><br />', $page->{'caption'}, $data_type->{$type}{'term'}, lc($multi_type).'s');
+          my $multi_form  = $self->new_form({'action' => $url, 'method' => 'post', 'class' => 'freeform'});
+          my $field          = $multi_form->add_field({
                                         'type'    => 'Dropdown',
                                         'name'    => $data_param,
                                         'values'  => $page->{'multi'}{'values'},
                                         });
-        $field->add_element({'type' => 'submit', 'value' => 'Go'}, 1);
-        $html .= $multi_form->render;
+          $field->add_element({'type' => 'submit', 'value' => 'Go'}, 1);
+          $html .= $multi_form->render;
+        }
       }
       else {
-        $html .= sprintf('<a href="%s"><img src="/i/gallery/%s.png" /></a>', $page->{'url'}, $page->{'img'});
-        $html .= sprintf('<div class="preview_caption"><a href="%s" class="nodeco">%s</a></div><br />', $page->{'url'}, $page->{'caption'});
+        $html .= sprintf('<a href="%s"><img src="/i/gallery/%s.png" /></a>', $url, $page->{'img'});
+        $html .= sprintf('<div class="preview_caption"><a href="%s" class="nodeco">%s</a></div><br />', $url, $page->{'caption'});
 
       }
 
-      my $form = $self->new_form({'action' => $page->{'url'}, 'method' => 'post', 'class' => 'freeform'});
+      my $form = $self->new_form({'action' => $url, 'method' => 'post', 'class' => 'freeform'});
 
       my $data_param = $data_type->{$type}{'param'};
       my $value           = $self->hub->param('default') ? $self->hub->param($data_param) : undef;
