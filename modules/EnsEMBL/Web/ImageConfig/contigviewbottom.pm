@@ -29,7 +29,7 @@ sub glyphset_configs {
   my $self = shift;
   
   if (!$self->{'ordered_tracks'}) {
-    $self->get_node('user_data')->after($_) for grep $_->get('trockhub_menu'), $self->tree->nodes;
+    $self->get_node('user_data')->after($_) for grep $_->get('trackhub_menu'), $self->tree->nodes;
     $self->SUPER::glyphset_configs;
   }
   
@@ -204,10 +204,10 @@ sub init {
   if ($self->species_defs->HAS_LRG) {
     $self->add_tracks('lrg',
       [ 'lrg_transcript', 'LRG', '_transcript', {
-        display     => 'transcript_label',
-        strand      => 'f',
-        name        => 'LRG transcripts',
-        description => 'Shows LRG transcripts',
+        display     => 'off', # Switched off by default
+        strand      => 'b',
+        name        => 'LRG',
+        description => 'Transcripts from the <a class="external" href="http://www.lrg-sequence.org">Locus Reference Genomic sequence</a> project.',
         logic_names => [ 'LRG_import' ],
         logic_name  => 'LRG_import',
         colours     => $self->species_defs->colour('gene'),

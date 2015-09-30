@@ -78,7 +78,7 @@ sub transcript_table {
     $table->add_row('Description', $description);
   }
 
-  my $location    = $hub->param('r') || sprintf '%s:%s-%s', $object->seq_region_name, $object->seq_region_start, $object->seq_region_end;
+  my $location    = sprintf '%s:%s-%s', $object->seq_region_name, $object->seq_region_start, $object->seq_region_end;
 
   my $site_type         = $hub->species_defs->ENSEMBL_SITETYPE; 
   my @SYNONYM_PATTERNS  = qw(%HGNC% %ZFIN%);
@@ -1268,6 +1268,58 @@ sub render_sift_polyphen {
   );
 }
 
+sub classify_sift_polyphen {
+  ## render a sift or polyphen prediction with colours and a hidden span with a rank for sorting
+  my ($self, $pred, $score) = @_;
+
+  return [undef,'-','','-'] unless defined($pred) || defined($score);
+
+  my %classes = (
+    '-'                 => '',
+    'probably damaging' => 'bad',
+    'possibly damaging' => 'ok',
+    'benign'            => 'good',
+    'unknown'           => 'neutral',
+    'tolerated'         => 'good',
+    'deleterious'       => 'bad',
+
+    # slightly different format for SIFT low confidence states
+    # depending on whether they come direct from the API
+    # or via the VEP's no-whitespace processing
+    'tolerated - low confidence'   => 'neutral',
+    'deleterious - low confidence' => 'neutral',
+    'tolerated low confidence'     => 'neutral',
+    'deleterious low confidence'   => 'neutral',
+  );
+
+  my %ranks = (
+    '-'                 => 0,
+    'probably damaging' => 4,
+    'possibly damaging' => 3,
+    'benign'            => 1,
+    'unknown'           => 2,
+    'tolerated'         => 1,
+    'deleterious'       => 2,
+  );
+
+  my ($rank, $rank_str);
+
+  if(defined($score)) {
+    $rank = int(1000 * $score) + 1;
+    $rank_str = "$score";
+  }
+  else {
+    $rank = $ranks{$pred};
+    $rank_str = $pred;
+  }
+
+  # 0 -- a value to use for sorting
+  # 1 -- a value to use for exporting
+  # 2 -- a class to use for styling
+  # 3 -- a value for display
+  return [$rank,$pred,$rank_str];
+}
+
 sub render_consequence_type {
   my $self        = shift;
   my $tva         = shift;
@@ -1303,7 +1355,7 @@ sub render_evidence_status {
   foreach my $evidence (sort {$b =~ /1000|hap/i <=> $a =~ /1000|hap/i || $a cmp $b} @$evidences){
     my $evidence_label = $evidence;
        $evidence_label =~ s/_/ /g;
-    $render .= sprintf('<img src="%s/val/evidence_%s.png" class="_ht" title="%s"/><span class="hidden export">%s,</span>',
+    $render .= sprintf('<img src="%s/val/evidence_%s.png" class="_ht" title="%s"/><div class="hidden export">%s</div>',
                         $self->img_url, $evidence, $evidence_label, $evidence
                       );
   }
@@ -1318,7 +1370,7 @@ sub render_clinical_significance {
   foreach my $cs (sort {$a cmp $b} @$clin_signs){
     my $cs_img = $cs;
        $cs_img =~ s/\s/-/g;
-    $render .= sprintf('<img src="%s/val/clinsig_%s.png" class="_ht" title="%s"/><span class="hidden export">%s,</span>',
+    $render .= sprintf('<img src="%s/val/clinsig_%s.png" class="_ht" title="%s"/><div class="hidden export">%s</div>',
                         $self->img_url, $cs_img, $cs, $cs
                       );
   }

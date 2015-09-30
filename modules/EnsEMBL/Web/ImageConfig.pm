@@ -171,7 +171,7 @@ sub menus {
     gene_transcript     => 'Genes and transcripts',
     transcript          => [ 'Genes',                  'gene_transcript' ],    
     prediction          => [ 'Prediction transcripts', 'gene_transcript' ],
-    lrg                 => [ 'LRG transcripts',        'gene_transcript' ],
+    lrg                 => [ 'LRG',                    'gene_transcript' ],
     rnaseq              => [ 'RNASeq models',          'gene_transcript' ],
     
     # Supporting evidence
@@ -869,22 +869,19 @@ sub _add_trackhub_node {
     ## The only parameter we override from superTrack nodes is visibility
     if ($data->{'superTrack'} && $data->{'superTrack'} eq 'on') {
       $config->{'visibility'} = $data->{'visibility'};
-      $config->{'on_off'}     = $data->{'on_off'};
     }
-    else {
-      $config->{$_}       = $data->{$_} for keys %$data;
-      $config->{'on_off'} = $data->{'on_off'};
-    }
+    #else {
+    #  $config->{$_}       = $data->{$_} for keys %$data;
+    #}
 
     ## Add any setting inherited from parents
     while ($n = $n->parent_node) {
       $data = $n->data;
       if ($data->{'superTrack'} && $data->{'superTrack'} eq 'on') {
         $config->{'visibility'} = $data->{'visibility'};
-        $config->{'on_off'}     = $data->{'on_off'};
         last;
       }
-      $config->{$_} ||= $data->{$_} for keys %$data;
+      #$config->{$_} ||= $data->{$_} for keys %$data;
     }
     $config->{'on_off'} = 'off' if $force_hide;
 
@@ -1041,7 +1038,7 @@ sub _add_trackhub_tracks {
     
     $tracks{$type}{$source->{'name'}} = $source;
   }
-  warn ">>> HUB $name HAS $count_visible TRACKS TURNED ON BY DEFAULT!";
+  #warn ">>> HUB $name HAS $count_visible TRACKS TURNED ON BY DEFAULT!";
   
   $self->load_file_format(lc, $tracks{$_}) for keys %tracks;
 }
@@ -2091,7 +2088,9 @@ sub add_matrix {
   $data->{'column_key'}  = $column_key;
   $data->{'menu'}        = 'matrix_subtrack';
   $data->{'source_name'} = $data->{'name'};
-  $data->{'display'}   ||= 'default';
+  if (!$data->{'display'} || $data->{'display'} eq 'off') {
+    $data->{'display'} = 'default';
+  }
   
   if (!$menu_data->{'matrix'}) {
     my $hub = $self->hub;

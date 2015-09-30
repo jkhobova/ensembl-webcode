@@ -540,11 +540,12 @@ sub ajax_url {
   my $self     = shift;
   my $function = shift;
   my $params   = shift || {};
+  my $extra    = shift || 'Component';
   my (undef, $plugin, undef, $type, @module) = split '::', ref $self;
 
   my $module   = sprintf '%s%s', join('__', @module), $function && $self->can("content_$function") ? "/$function" : '';
 
-  return $self->hub->url('Component', { type => $type, action => $plugin, function => $module, %$params }, undef, !$params->{'__clear'});
+  return $self->hub->url($extra, { type => $type, action => $plugin, function => $module, %$params }, undef, !$params->{'__clear'});
 }
 
 sub EC_URL {
@@ -710,7 +711,7 @@ sub _export_image {
 }
 
 sub toggleable_table {
-  my ($self, $title, $id, $table, $open, $extra_html) = @_;
+  my ($self, $title, $id, $table, $open, $extra_html, $for_render) = @_;
   my @state = $open ? qw(show open) : qw(hide closed);
   
   $table->add_option('class', $state[0]);
@@ -723,7 +724,7 @@ sub toggleable_table {
       <h2><a rel="%s_table" class="toggle _slide_toggle %s" href="#%s_table">%s</a></h2>
       %s
     </div>',
-    $extra_html, $id, $state[1], $id, $title, $table->render
+    $extra_html, $id, $state[1], $id, $title, $table->render(@{$for_render||[]})
   ); 
 }
 
