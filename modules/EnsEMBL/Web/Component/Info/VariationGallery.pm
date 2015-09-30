@@ -22,6 +22,8 @@ package EnsEMBL::Web::Component::Info::VariationGallery;
 
 use strict;
 
+use EnsEMBL::Web::REST;
+
 use base qw(EnsEMBL::Web::Component::Info);
 
 sub _init {
@@ -100,6 +102,21 @@ sub _get_pages {
     return $self->warning_panel('Invalid identifier', 'Sorry, that identifier could not be found. Please try again.');
   }
   else {
+    ## Get consequences of this variant
+    my $rest = EnsEMBL::Web::REST->new($hub);
+    my $endpoint = sprintf '/vep/%s/id/%s', $hub->species, $v;
+    my $vep_output = $rest->fetch($endpoint);
+    use Data::Dumper; warn Dumper($vep_output);
+    my $consequences = {};
+    unless (ref($vep_output) eq 'HASH' && $vep_output->{'error'}) {
+      foreach (@$vep_output) {
+        foreach my $c (@{$_->{'transcript_consequences'}||[]}) {
+          (my $description = $c->{'consequence_terms'}[0]) =~ s/_/ /g;
+          $consequences->{$c->{'transcript_id'}} = $description;
+        }
+      }
+    }
+
     ## Location checking
     my %mappings = %{$object->variation_feature_mapping};
     if (scalar keys %mappings == 0) {
@@ -152,7 +169,9 @@ sub _get_pages {
                               'values'  => [{'value' => '', 'caption' => '-- Select transcript --'}],
                             };
         foreach (sort {$transcripts{$a}->{'name'} cmp $transcripts{$b}->{'name'}} keys %transcripts) {
-          push @{$multi_transcript->{'values'}}, {'value' => $_, 'caption' => sprintf('%s (%s)', $transcripts{$_}->{'name'}, $transcripts{$_}->{'biotype'})};
+          my $caption = sprintf('%s (%s)', $transcripts{$_}->{'name'}, $transcripts{$_}->{'biotype'});
+          $caption   .= sprintf(' - %s', $consequences->{$_}) if $consequences->{$_};
+          push @{$multi_transcript->{'values'}}, {'value' => $_, 'caption' => $caption};
         }
       }
       else {
