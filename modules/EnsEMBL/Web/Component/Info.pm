@@ -134,19 +134,22 @@ sub format_gallery {
         $html .= sprintf('<div class="preview_caption">%s<br />[Not available for this %s]</div><br />', $page->{'caption'}, lc($header_info->{$type}{'term'}));
       }
       elsif ($page->{'multi'}) {
-        ## Disable links on views that can't be mapped to a single feature/location
-        $html .= sprintf('<img src="/i/gallery/%s.png" /></a>', $page->{'img'});
+        my $image = sprintf('<img src="/i/gallery/%s.png" /></a>', $page->{'img'});
         my $multi_type = $page->{'multi'}{'type'};
         if ($page->{'multi'}{'zmenu'}) {
+          ## Link to a zmenu of features
           my $params = $page->{'multi'}{'zmenu'};
           ## Also pass the parameters for the page we want the zmenu to link to
           while (my($k, $v) = each(%{$page->{'link_to'}})) {
             $params->{"link_$k"} = $v;
           }
           my $zmenu_link  = $self->hub->url($params);
+          $html .= sprintf('<a href="%s" class="_zmenu">%s</a>', $zmenu_link, $image);
           $html .= sprintf('<div class="preview_caption">%s<br /><br />This %s maps to <a href="%s" class="_zmenu">multiple %s</a></div><br />', $page->{'caption'}, $data_type->{$type}{'term'}, $zmenu_link, lc($multi_type).'s');
         }
         else {
+          ## Disable links on views that can't be mapped to a single feature/location
+          $html .= $image;
           my $data_param  = $page->{'multi'}{'param'};
           $html .= sprintf('<div class="preview_caption">%s<br /><br />This %s maps to multiple %s</div><br />', $page->{'caption'}, $data_type->{$type}{'term'}, lc($multi_type).'s');
           my $multi_form  = $self->new_form({'action' => $url, 'method' => 'post', 'class' => 'freeform'});
