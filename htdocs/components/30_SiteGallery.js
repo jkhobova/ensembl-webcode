@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-Ensembl.Panel.FormSubmission = Ensembl.Panel.Content.extend({
+Ensembl.Panel.SiteGalleryHome = Ensembl.Panel.Content.extend({
   constructor: function (id, params) {
     this.base(id, params);
   },

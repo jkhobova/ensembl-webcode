@@ -46,19 +46,21 @@ sub render {
   }
 
   $html .= '<div class="js_panel" id="site-gallery-home">
-      <input type="hidden" class="panel_type" value="FormSubmission">';
+      <input type="hidden" class="panel_type" value="SiteGalleryHome">';
 
   my $form      = EnsEMBL::Web::Form->new({'id' => 'gallery_home', 'action' => '/Info/CheckGallery', 'class' => 'add_species_on_submit', 'name' => 'gallery_home'});
   my $fieldset  = $form->add_fieldset({});
 
-  my @array;
+  my (@array, %sample_data);
   foreach ($species_defs->valid_species) {
     my $class = ['_stt'];
     push @$class, $hub->species_defs->get_config($_, 'databases')->{'DATABASE_VARIATION'} 
                   ? '_stt__var' : '_stt__novar';
     push @array, {'value' => $_, 'class' => $class,
                   'caption' => $species_defs->get_config($_, 'SPECIES_COMMON_NAME')};
+    $sample_data{$_} =  $species_defs->get_config($_, 'SAMPLE_DATA');
   }
+
   my @species     = sort {$a->{'caption'} cmp $b->{'caption'}} @array;
   my $favourites  = $hub->get_favourite_species;
   $fieldset->add_field({
@@ -69,6 +71,7 @@ sub render {
                         'values'  => \@species,
                         'value'   => $favourites->[0],
                         });
+
 
   ## Two radiolists, with and without variants
 
@@ -94,6 +97,21 @@ sub render {
   $var_params{'values'}       = $data_types;
   $var_params{'value'}        = 'Variation';
   $fieldset->add_field(\%var_params);
+
+  ## Add hidden fields for default values for every species, for use by JavaScript
+  while (my($species, $examples) = each(%sample_data)) {
+    foreach (@$data_types) {
+      my $type  = $_->{'value'};
+      my $key   = uc($type).'_PARAM';
+      my $value = $examples->{$key};
+      if ($value) {
+        $fieldset->add_hidden({
+                              'name'    => $species.'-'.$type,
+                              'value'   => $value,
+                            });
+      }
+    }
+  }
 
   $fieldset->add_field({
                         'type'    => 'String',
