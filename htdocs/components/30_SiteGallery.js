@@ -23,19 +23,39 @@ Ensembl.Panel.SiteGalleryHome = Ensembl.Panel.Content.extend({
     var panel = this;
     this.base();
 
-    // Auto-populate identifier field with hidden value, based on species and feature type selected
-    this.elLk.radio_var   = $('input:radio[name=data_type_var]', this.el);
-    //this.elLk.radio_novar = $('input:radio[name=data_type_novar]', this.el);
+    /* 
+    Auto-populate identifier field with hidden value, based on species and feature type selected
+    */
     panel.elLk.select     = $('select[name=species]', this.el);
     panel.elLk.identifier = $('input[name=identifier]', this.el);
 
+    // Call the update function for each scenario:
+    // Radio buttons
+    this.elLk.radio_var   = $('input:radio[name=data_type_var]', this.el);
     this.elLk.radio_var.on({
       'change': function() {
         var type    = $(this).val();
         var species = panel.elLk.select.val();
-        panel.elLk.example = $('input[name='+species+'-'+type+']');
-        var example = panel.elLk.example.val();
-        panel.elLk.identifier.val(example);
+        panel.updateIdentifier(panel, species, type);
+      }
+    });
+    this.elLk.radio_novar = $('input:radio[name=data_type_novar]', this.el);
+    this.elLk.radio_novar.on({
+      'change': function() {
+        var type    = $(this).val();
+        var species = panel.elLk.select.val();
+        panel.updateIdentifier(panel, species, type);
+      }
+    });
+
+    // Species selector
+    this.elLk.select.on({
+      'change': function() {
+        var species       = $(this).val();
+        var radio_name    = 'var';
+        panel.elLk.radio  = $('input:radio[name=data_type_'+radio_name+']', this.el);
+        var type          = panel.elLk.radio.val();
+        panel.updateIdentifier(panel, species, type);
       }
     });
 
@@ -48,6 +68,14 @@ Ensembl.Panel.SiteGalleryHome = Ensembl.Panel.Content.extend({
       form.action = new_action;
       return true;
     });
+  },
+
+  updateIdentifier: function (panel, species, type) {
+    // Find the hidden input that corresponds to these options
+    panel.elLk.example  = $('input[name='+species+'-'+type+']');
+    var example         = panel.elLk.example.val();
+    // Set the identifier field to the value of the hidden field
+    panel.elLk.identifier.val(example);
   }
 
 });
