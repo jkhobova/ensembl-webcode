@@ -30,6 +30,12 @@ Ensembl.Panel.SiteGalleryHome = Ensembl.Panel.Content.extend({
     panel.elLk.identifier = $('input[name=identifier]', this.el);
 
     // Call the update function for each scenario:
+
+    // On page load, i.e. now!
+    var type = panel.el.find('input:radio:visible').val();
+    var species = panel.elLk.select.val();
+    panel.updateIdentifier(panel, species, type);
+
     // Radio buttons
     this.elLk.radio_var   = $('input:radio[name=data_type_var]', this.el);
     this.elLk.radio_var.on({
@@ -39,6 +45,7 @@ Ensembl.Panel.SiteGalleryHome = Ensembl.Panel.Content.extend({
         panel.updateIdentifier(panel, species, type);
       }
     });
+
     this.elLk.radio_novar = $('input:radio[name=data_type_novar]', this.el);
     this.elLk.radio_novar.on({
       'change': function() {
@@ -51,10 +58,10 @@ Ensembl.Panel.SiteGalleryHome = Ensembl.Panel.Content.extend({
     // Species selector
     this.elLk.select.on({
       'change': function() {
-        var species       = $(this).val();
-        var radio_name    = 'var';
-        panel.elLk.radio  = $('input:radio[name=data_type_'+radio_name+']', this.el);
-        var type          = panel.elLk.radio.val();
+        // Get species from self
+        var species           = $(this).val();
+        // Work out which radio button set to use
+        var type = panel.el.find('input:radio:visible').val();  
         panel.updateIdentifier(panel, species, type);
       }
     });
