@@ -83,6 +83,7 @@ sub render {
   my %params = (
                 'type'        => 'Radiolist',
                 'name'        => 'data_type_novar',
+                'label'       => 'Feature type',
                 'field_class' => '_stt_novar',
                 'values'      => $data_types,
                 'value'       => 'Gene',
@@ -95,7 +96,6 @@ sub render {
   $var_params{'name'}         = 'data_type_var';
   $var_params{'field_class'}  = '_stt_var';
   $var_params{'values'}       = $data_types;
-  $var_params{'value'}        = 'Variation';
   $fieldset->add_field(\%var_params);
 
   ## Add hidden fields for default values for every species, for use by JavaScript
@@ -116,7 +116,7 @@ sub render {
   $fieldset->add_field({
                         'type'    => 'String',
                         'name'    => 'identifier',
-                        'label'   => 'Identifier (optional)',
+                        'label'   => 'Identifier',
                         });
 
   $fieldset->add_button({
