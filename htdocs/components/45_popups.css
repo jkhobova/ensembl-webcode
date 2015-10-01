@@ -89,6 +89,8 @@ body.ie6 .floating_popup .spinner      { background-color: [[TINT_BG]]; border: 
 .zmenu .loc-icon-a:hover .loc-icon,
 .zmenu .loc-icon:hover                 { background-color: [[BUTTON_BG_HOVER]]; border: 2px solid [[BUTTON_BG_HOVER]]; }
 
+.zmenu .subheader                      { background-color: [[NEUTRAL_BORDER]]; }
+
 body.ie  .zmenu_holder .grid           { width: 200px; }
 body.ie  .zmenu_holder div.header      { width: 202px; }
 body.ie6 .zmenu_holder span.close,
