@@ -146,10 +146,14 @@ sub _get_pages {
     
     if (scalar keys %transcripts) {
       if (scalar keys %transcripts > 1) {
+        my @strings;
+        while (my($id, $info) = each (%transcripts)) {
+          push @strings, $id.'_'.$info->{'biotype'};
+        }
         my $params = {
                       'type'        => 'ZMenu', 
                       'action'      => 'Gallery_TranscriptVariant', 
-                      'transcripts' => join(':', keys %transcripts),
+                      'transcripts' => join(':', @strings),
                       'v'           => $v,
                       };
         $multi_transcript = {

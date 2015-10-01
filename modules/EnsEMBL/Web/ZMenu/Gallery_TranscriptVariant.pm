@@ -50,8 +50,6 @@ sub content {
   }
   my $has_consequences = keys %$consequences;
 
-  my @transcript_ids = split(':', $hub->param('transcripts'));
-
   my $params = {};
   ## Unpack the parameters for the link to the view
   foreach (grep /link_/, $hub->param) {
@@ -59,16 +57,21 @@ sub content {
     $params->{$p} = $hub->param($_);
   }
 
-  foreach (@transcript_ids) {
+  my $table = '
+      <table class="zmenu" cellpadding="0" cellspacing="0">
+        <tr class="subheader"><th>Stable ID</th><th>Biotype</th><th>Variant consequence</th></tr>
+    ';
 
-    $params->{'t'} = $_;
-
-    $self->add_entry({
-      'type'    => $_,
-      'label'   => $consequences->{$_},
-      'link'    => $hub->url($params),
-    });
+  foreach (split(':', $hub->param('transcripts'))) {
+    my ($id, $biotype) = split('_', $_);
+    $params->{'t'} = $id;
+    $table .= sprintf('<tr><td><a href="%s">%s</td><td>%s</td><td>%s</td></tr>', 
+                        $hub->url($params), $id, $biotype, $consequences->{$id});
   }
+
+  $table .= '</table>';
+
+  $self->add_entry({ label_html => $table });
 }
 
 1;
