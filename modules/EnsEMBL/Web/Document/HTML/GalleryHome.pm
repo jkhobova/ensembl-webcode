@@ -26,15 +26,16 @@ use warnings;
 use EnsEMBL::Web::Form;
 use EnsEMBL::Web::Component;
 
+use JSON qw(to_json);
+
 use base qw(EnsEMBL::Web::Document::HTML);
 
 sub render {
-  my $self = shift;
+  my $self  = shift;
+  my $hub   = $self->hub;
   my $html;
 
-  my $hub           = $self->hub;
-  my $species_defs  = $hub->species_defs;
-  my $sitename      = $species_defs->ENSEMBL_SITETYPE;
+  my ($species, $sample_data) = $self->_species_data;
 
   ## Check session for messages
   my $error = $hub->session->get_data('type' => 'message', 'code' => 'gallery');
@@ -48,81 +49,43 @@ sub render {
   $html .= '<div class="js_panel" id="site-gallery-home">
       <input type="hidden" class="panel_type" value="SiteGalleryHome">';
 
-  my $form      = EnsEMBL::Web::Form->new({'id' => 'gallery_home', 'action' => '/Info/CheckGallery', 'class' => 'add_species_on_submit', 'name' => 'gallery_home'});
-  my $fieldset  = $form->add_fieldset({});
+  my $form  = EnsEMBL::Web::Form->new({'id' => 'gallery_home', 'action' => $hub->url({qw(species Multi type Info action CheckGallery)}), 'name' => 'gallery_home'});
 
-  my (@array, %sample_data);
-  foreach ($species_defs->valid_species) {
-    my $class = ['_stt'];
-    push @$class, $hub->species_defs->get_config($_, 'databases')->{'DATABASE_VARIATION'} 
-                  ? '_stt__var' : '_stt__novar';
-    push @array, {'value' => $_, 'class' => $class,
-                  'caption' => $species_defs->get_config($_, 'SPECIES_COMMON_NAME')};
-    $sample_data{$_} =  $species_defs->get_config($_, 'SAMPLE_DATA');
-  }
+  # species dropdown
+  $form->add_field({
+    'label'         => 'Species',
+    'type'          => 'dropdown',
+    'name'          => 'species',
+    'value'         => $species->[0]->{'value'},
+    'values'        => \@$species
+  });
 
-  my @species     = sort {$a->{'caption'} cmp $b->{'caption'}} @array;
-  my $favourites  = $hub->get_favourite_species;
-  $fieldset->add_field({
-                        'type'    => 'Dropdown',
-                        'name'    => 'species',
-                        'label'   => 'Species',
-                        'class'   => '_stt',
-                        'values'  => \@species,
-                        'value'   => $favourites->[0],
-                        });
+  # data type field
+  $form->add_field({
+    'type'        => 'Radiolist',
+    'name'        => 'data_type',
+    'label'       => 'Feature type',
+    'value'       => 'gene',
+    'values'      => [
+                        {'value' => 'gene',       'caption' => 'Genes'            },
+                        {'value' => 'location',   'caption' => 'Genomic locations'},
+                        {'value' => 'variation',  'caption' => 'Variants'         }
+                     ]
+  });
 
+  # hidden sample data used by js
+  $form->add_hidden({'class' => 'js_param json', 'name' => 'sample_data', 'value' => to_json($sample_data)});
 
-  ## Two radiolists, with and without variants
+  $form->add_field({
+    'type'  => 'String',
+    'name'  => 'identifier',
+    'label' => 'Identifier',
+  });
 
-  my $data_types = [
-                    {'value' => 'Gene',       'caption' => 'Genes'},
-                    {'value' => 'Location',   'caption' => 'Genomic locations'},
-                    ];
-
-  my %params = (
-                'type'        => 'Radiolist',
-                'name'        => 'data_type_novar',
-                'label'       => 'Feature type',
-                'field_class' => '_stt_novar',
-                'values'      => $data_types,
-                'value'       => 'Gene',
-                );
-  $fieldset->add_field(\%params);
-
-  push @$data_types, {'value' => 'Variation',  'caption' => 'Variants'};
-
-  my %var_params = %params;
-  $var_params{'name'}         = 'data_type_var';
-  $var_params{'field_class'}  = '_stt_var';
-  $var_params{'values'}       = $data_types;
-  $fieldset->add_field(\%var_params);
-
-  ## Add hidden fields for default values for every species, for use by JavaScript
-  while (my($species, $examples) = each(%sample_data)) {
-    foreach (@$data_types) {
-      my $type  = $_->{'value'};
-      my $key   = uc($type).'_PARAM';
-      my $value = $examples->{$key};
-      if ($value) {
-        $fieldset->add_hidden({
-                              'name'    => $species.'-'.$type,
-                              'value'   => $value,
-                            });
-      }
-    }
-  }
-
-  $fieldset->add_field({
-                        'type'    => 'String',
-                        'name'    => 'identifier',
-                        'label'   => 'Identifier',
-                        });
-
-  $fieldset->add_button({
-    'name'      => 'submit',
-    'value'     => 'Go',
-    'class'     => 'submit'
+  $form->add_button({
+    'name'  => 'submit',
+    'value' => 'Go',
+    'class' => 'submit'
   });
 
   $html .= $form->render;
@@ -130,6 +93,39 @@ sub render {
   $html .= '</div>';
 
   return $html; 
+}
+
+sub _species_data {
+  ## @private
+  my $self = shift;
+
+  if (!$self->{'_species'} || !$self->{'_sample_data'}) {
+    my $hub     = $self->hub;
+    my $sd      = $hub->species_defs;
+    my %fav     = map { $_ => 1 } @{$hub->get_favourite_species};
+
+    my @species;
+    my %sample_data;
+
+    foreach my $species ($sd->valid_species) {
+
+      push @species, { 'value' => $species, 'caption' => $sd->get_config($species, 'SPECIES_COMMON_NAME') };
+
+      my $data = $sd->get_config($species, 'SAMPLE_DATA');
+
+      for (qw(gene location variation)) {
+        my $value = $data->{uc $_.'_PARAM'};
+        $sample_data{$species}{$_} = $value if $value;
+      }
+    }
+
+    @species = sort { ($a->{'favourite'} xor $b->{'favourite'}) ? $b->{'favourite'} || -1 : $a->{'caption'} cmp $b->{'caption'} } @species;
+
+    $self->{'_species'}     = \@species;
+    $self->{'_sample_data'} = \%sample_data;
+  }
+
+  return ($self->{'_species'}, $self->{'_sample_data'});
 }
 
 1;

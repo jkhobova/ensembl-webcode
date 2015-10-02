@@ -15,74 +15,46 @@
  */
 
 Ensembl.Panel.SiteGalleryHome = Ensembl.Panel.Content.extend({
-  constructor: function (id, params) {
-    this.base(id, params);
-  },
 
   init: function () {
-    var panel = this;
-    this.base();
 
-    /* 
-    Auto-populate identifier field with hidden value, based on species and feature type selected
-    */
-    panel.elLk.select     = $('select[name=species]', this.el);
-    panel.elLk.identifier = $('input[name=identifier]', this.el);
+    this.base.apply(this, arguments);
 
-    // Call the update function for each scenario:
+    this.elLk.form        = this.el.find('form[name=gallery_home]').remove('.js_param');
+    this.elLk.dataType    = this.elLk.form.find('input[name=data_type]');
+    this.elLk.identifier  = this.elLk.form.find('input[name=identifier]');
+    this.elLk.species     = this.elLk.form.find('select[name=species]');
 
-    // On page load, i.e. now!
-    var type = panel.el.find('input:radio:visible').val();
-    var species = panel.elLk.select.val();
-    panel.updateIdentifier(panel, species, type);
+    this.formAction       = this.elLk.form.attr('action');
 
-    // Radio buttons
-    this.elLk.radio_var   = $('input:radio[name=data_type_var]', this.el);
-    this.elLk.radio_var.on({
-      'change': function() {
-        var type    = $(this).val();
-        var species = panel.elLk.select.val();
-        panel.updateIdentifier(panel, species, type);
-      }
-    });
+    this.initSelectToToggle();
+    this.updateIdentifier();
 
-    this.elLk.radio_novar = $('input:radio[name=data_type_novar]', this.el);
-    this.elLk.radio_novar.on({
-      'change': function() {
-        var type    = $(this).val();
-        var species = panel.elLk.select.val();
-        panel.updateIdentifier(panel, species, type);
-      }
-    });
-
-    // Species selector
-    this.elLk.select.on({
-      'change': function() {
-        // Get species from self
-        var species           = $(this).val();
-        // Work out which radio button set to use
-        var type = panel.el.find('input:radio:visible').val();  
-        panel.updateIdentifier(panel, species, type);
-      }
-    });
-
-    // Add species name at beginning of form URL e.g. /Homo_sapiens/Info/GeneGallery
-    $('form.add_species_on_submit').on('submit', function () {
-      var form        = this;
-      var old_action  = $(form).attr('action');
-      var species = $('select[name="species"] option:selected').val();
-      var new_action  = '/' + species + old_action;
-      form.action = new_action;
-      return true;
-    });
+    this.elLk.dataType.add(this.elLk.species).on('change', {panel: this}, function(e) { e.data.panel.updateIdentifier() });
   },
 
-  updateIdentifier: function (panel, species, type) {
-    // Find the hidden input that corresponds to these options
-    panel.elLk.example  = $('input[name='+species+'-'+type+']');
-    var example         = panel.elLk.example.val();
-    // Set the identifier field to the value of the hidden field
-    panel.elLk.identifier.val(example);
-  }
+  initSelectToToggle: function () {
+    var panel = this;
 
+    this.elLk.species.find('option').addClass(function () {
+      return panel.params['sample_data'][this.value]['variation'] ? '_stt__var' : '_stt__novar';
+    });
+
+    this.elLk.dataType.parent().addClass(function () {
+      return $(this).find('[value=variation]').length ? '_stt_var' : '_stt_var _stt_novar';
+    });
+
+    this.elLk.species.selectToToggle();
+  },
+
+  updateIdentifier: function () {
+    var species = this.elLk.species.val();
+
+    if (!this.elLk.dataType.filter(':visible:checked').length) {
+      this.elLk.dataType.filter(':visible').first().prop('checked', true);
+    }
+
+    this.elLk.identifier.val((this.params['sample_data'][species] || {})[this.elLk.dataType.filter(':checked').val()] || '');
+    this.elLk.form.attr('action', this.formAction.replace('Multi',  species));
+  }
 });
