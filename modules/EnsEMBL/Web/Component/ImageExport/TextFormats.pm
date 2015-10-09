@@ -41,24 +41,99 @@ sub content {
 
   my $form = $self->new_form({'id' => 'export', 'action' => $hub->url({'action' => 'Output',  '__clear' => 1}), 'method' => 'post', 'class' => 'freeform-stt'});
 
-  my $fieldset = $form->add_fieldset({'legend' => 'Select Format'});
+  my $fieldset = $form->add_fieldset({'legend' => 'What would you like to export?'});
 
+  my $values = [
+                {'value' => 'sequence', 'caption' => 'FASTA sequence for this region', 'class' => '_stt _stt__sequence' },
+                {'value' => 'tracks',   'caption' => 'Tracks displayed in this image', 'class' => '_stt _stt__tracks' },
+                {'value' => 'other',    'caption' => 'A larger data set (e.g. all genes, or multiple regions)', 'class' => '_stt _stt__other' },
+                ];
 
-    my $tracks = {
+  $fieldset->add_field({
+        'type'    => 'Radiolist',
+        'name'    => 'next_acion',
+        'class'   => '_stt',
+        'value'   => 'tracks',
+        'values'  => $values,
+  });
+
+  my $compress = {
                   'type'    => 'Radiolist',
-                  'name'    => $type.'_tracks', 
-                  'label'   => 'Tracks to export',
-                  'value'   => 'all',
-                  'class'   => '_stt',
-                  'values'  => [{'label' => 'All visible feature tracks', 'value' => 'all'},
-                                {'label' => 'Selected tracks only', 'value' => 'selection'}],
-                  };
+                  'name'    => 'compression',
+                  'values'  => [
+                                {'caption' => 'Uncompressed', 'value' => '', 'checked' => 1},
+                                {'caption' => 'Gzip', 'value' => 'gz'},
+                                ],
+                  'notes'   => 'Select "uncompressed" to get a preview of your file',
+  };
 
-  my $next_fieldset = $form->add_fieldset({'class' => '_stt_selection'});
-  $next_fieldset->add_button('type' => 'Submit', 'name' => 'submit', 'value' => 'Next');
+  ## Sequence options
+  my $sequence = $form->add_fieldset({'class' => '_stt_sequence', 'legend' => 'Options'});
 
-  my $all_fieldset = $form->add_fieldset({'class' => '_stt_all'});
-  $all_fieldset->add_button('type' => 'Submit', 'name' => 'submit', 'value' => 'Download', 'class' => 'download');
+  $sequence->add_field({
+        'type'  => 'Dropdown',
+        'name'  => 'masking',
+        'values'  => [
+                      {'value' => '',     'caption' => 'Unmasked'},
+                      {'value' => 'soft', 'caption' => 'Repeat masked (soft)'},
+                      {'value' => 'hard', 'caption' => 'Repeat masked (hard)'},
+                      ],
+  });
+
+
+  $sequence->add_field($compress);
+
+  $sequence->add_button({
+        'type'        => 'Submit',
+        'name'        => 'submit',
+        'value'       => 'Download',
+  }); 
+
+  ## Track options
+  my $track_opts = $form->add_fieldset({'class' => '_stt_tracks', 'legend' => 'Options'});
+
+  my $formats = [
+                {'value' => 'bed', 'caption' => 'BED'},
+                {'value' => 'gff', 'caption' => 'GFF'},
+                {'value' => 'gtf', 'caption' => 'GTF'},
+                ];
+
+  $track_opts->add_field({
+        'type'    => 'Dropdown',
+        'name'    => 'format',
+        'value'   => 'gff',
+        'values'  => $formats,
+  });
+
+  $track_opts->add_field({
+        'type'    => 'Radiolist',
+        'name'    => 'select_tracks',
+        'value'   => 'all',
+        'values'  => [
+                      {'value' => 'all', 'caption' => 'All visible feature tracks'},
+                      {'value' => 'selection', 'caption' => 'Selected tracks only'},
+                      ],
+  });
+
+  $track_opts->add_field($compress);
+
+  $track_opts->add_button({
+        'type'        => 'Submit',
+        'name'        => 'submit',
+        'value'       => 'Download',
+  }); 
+
+  ## Biomart link
+  my $biomart = $form->add_fieldset({'class' => '_stt_other'});
+
+  $biomart->add_notes({'text' => '<img src="/i/biomart_thumb.gif" /> 
+<b>The Biomart data-mining tool allows you to create custom queries for large data sets.</b>'});
+
+  $biomart->add_button({
+        'type'        => 'Submit',
+        'name'        => 'submit',
+        'value'       => 'Try it',
+  });
 
   return '<h1>Download data from image</h1>'.$form->render;
 }
