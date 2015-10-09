@@ -207,11 +207,19 @@ sub add_export_icon {
 ### Configure icon for data export 
 ### @return Hashref of icon parameters
   my $self = shift;
-  my $hub        = $self->hub;
+  my $hub         = $self->hub;
   my $component   = $self->component;
+  my $action      = $self->{'data_export'};
+  my $type; 
+  if ($action =~ /\//) {
+    ($type, $action) = split('/', $action);
+  }
+  else {
+    $type = 'ImageExport';
+  }
   my $params = {
-                   'type'      => 'DataExport', 
-                   'action'    => $self->{'data_export'},
+                   'type'      => $type, 
+                   'action'    => $action,
                    'data_type' => $hub->type,
                    'component' => $component,
                 };

@@ -109,7 +109,7 @@ sub content {
   return if $self->_export_image($image);
   
   $image->{'panel_number'}  = 'bottom';
-  $image->{'data_export'}   = 'Alignments';
+  $image->{'data_export'}   = 'DataExport/Alignments';
   $image->{'export_params'}   = ['align'];
   $image->imagemap = 'yes';
   $image->set_button('drag', 'title' => 'Click or drag to centre display');

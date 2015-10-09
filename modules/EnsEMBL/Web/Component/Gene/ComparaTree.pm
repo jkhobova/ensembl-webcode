@@ -320,7 +320,7 @@ sub content {
     $gene_name = $tree_stable_id;
   }
   $image->{'export_params'} = [['gene_name', $gene_name],['align', 'tree']];
-  $image->{'data_export'}   = 'GeneTree';
+  $image->{'data_export'}   = 'DataExport/GeneTree';
 
   $image->set_button('drag', 'title' => 'Drag to select region');
   

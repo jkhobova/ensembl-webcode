@@ -114,7 +114,7 @@ sub content {
     $gene_name = $tree->tree->stable_id;
   }
   $image->{'export_params'} = [['gene_name', $gene_name],['align', 'tree']];
-  $image->{'data_export'}   = 'SpeciesTree';
+  $image->{'data_export'}   = 'DataExport/SpeciesTree';
   
   $html .= $image->render;
   
